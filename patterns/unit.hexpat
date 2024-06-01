@@ -234,25 +234,30 @@ struct MeshInfoList {
     ThinMurmurHash unkHashes[MeshInfoCount];
 };
 
-struct UnkOffsetItemInts {
+struct SkeletonMapJointIndices {
     u32 data[parent.count];
 };
 
-struct UnkOffsetItem {
+struct SkeletonMapRemapIndices {
+    // this is wrong
+    u32 data[parent.count - parent.unk00];
+};
+
+struct SkeletonMapItem {
     u32 count;
     u32 unk00;
-    u8 *unk01 : u32 [[pointer_base("relative_to_parent")]];
+    SkeletonMapJointIndices *unitIndices : u32 [[pointer_base("relative_to_parent")]];
     u8 *unk02 : u32 [[pointer_base("relative_to_parent")]];
     Mat4x4 matrices[count];
 };
 
-struct UnkOffsetItemPtr {
-    UnkOffsetItem *data : u32 [[inline, pointer_base("relative_to_parents_parent")]];
+struct SkeletonMapItemPtr {
+    SkeletonMapItem *data : u32 [[inline, pointer_base("relative_to_parents_parent")]];
 };
 
-struct UnkOffsetList {
+struct SkeletonMapList {
     u32 count;
-    UnkOffsetItemPtr offsets[count];
+    SkeletonMapItemPtr offsets[count];
 };
 
 struct MaterialList {
@@ -345,7 +350,7 @@ struct Header {
     u8 *UnkOffset04 : u32;
     u8 *UnkOffset05 : u32;
     u8 unk04[4];
-    UnkOffsetList *UnkOffset06 : u32;
+    SkeletonMapList *SkeletonMapList : u32;
     MeshLayoutList *MeshLayoutListOffset: u32;
     u64 meshDataListAddress = $;
     $ += 4;
