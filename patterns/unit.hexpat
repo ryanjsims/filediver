@@ -239,15 +239,17 @@ struct SkeletonMapJointIndices {
 };
 
 struct SkeletonMapRemapIndices {
-    // this is wrong
-    u32 data[parent.count - parent.unk00];
+    u32 unk00;
+    u32 unk01;
+    u32 count;
+    u32 data[count];
 };
 
 struct SkeletonMapItem {
     u32 count;
     u32 unk00;
     SkeletonMapJointIndices *unitIndices : u32 [[pointer_base("relative_to_parent")]];
-    u8 *unk02 : u32 [[pointer_base("relative_to_parent")]];
+    SkeletonMapRemapIndices *remapIndices : u32 [[pointer_base("relative_to_parent")]];
     Mat4x4 matrices[count];
 };
 
@@ -350,7 +352,7 @@ struct Header {
     u8 *UnkOffset04 : u32;
     u8 *UnkOffset05 : u32;
     u8 unk04[4];
-    SkeletonMapList *SkeletonMapList : u32;
+    SkeletonMapList *skeletonMaps : u32;
     MeshLayoutList *MeshLayoutListOffset: u32;
     u64 meshDataListAddress = $;
     $ += 4;
