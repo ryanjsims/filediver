@@ -190,7 +190,7 @@ func remapMeshBones(mesh *unit.Mesh, mapping unit.SkeletonMap) {
 }
 
 // Adds the unit's skeleton to the gltf document
-func addSkeleton(doc *gltf.Document, unitInfo *unit.Info, boneInfo *bones.BoneInfo) uint32 {
+func addSkeleton(ctx extractor.Context, doc *gltf.Document, unitInfo *unit.Info, boneInfo *bones.BoneInfo) uint32 {
 	var matrices [][4][4]float32 = make([][4][4]float32, len(unitInfo.JointTransformMatrices))
 	gltfConversionMatrix := mgl32.HomogRotate3DX(mgl32.DegToRad(-90.0)).Mul4(mgl32.HomogRotate3DZ(mgl32.DegToRad(-90.0)))
 	for i := range matrices {
@@ -209,12 +209,15 @@ func addSkeleton(doc *gltf.Document, unitInfo *unit.Info, boneInfo *bones.BoneIn
 	boneBaseIndex := uint32(len(doc.Nodes))
 	for i, bone := range unitInfo.Bones {
 		quat := mgl32.Mat4ToQuat(bone.Transform.Rotation.Mat4())
-		boneName := fmt.Sprintf("%d:Bone_%08X", i, bone.NameHash.Value)
+		boneName := fmt.Sprintf("Bone_%08X", bone.NameHash.Value)
 		if boneInfo != nil {
 			name, exists := boneInfo.NameMap[bone.NameHash]
 			if exists {
-				boneName = fmt.Sprintf("%d:%s", i, name)
+				boneName = name
 			}
+		}
+		if ctx.Config()["index_bone_names"] == "true" {
+			boneName = fmt.Sprintf("%d:%s", i, boneName)
 		}
 		doc.Nodes = append(doc.Nodes, &gltf.Node{
 			Name:        boneName,
@@ -452,7 +455,7 @@ func ConvertOpts(ctx extractor.Context, imgOpts *ImageOptions) error {
 			if len(unitInfo.SkeletonMaps) > 0 {
 				remapMeshBones(&mesh, unitInfo.SkeletonMaps[0])
 			}
-			skin = gltf.Index(addSkeleton(doc, unitInfo, boneInfo))
+			skin = gltf.Index(addSkeleton(ctx, doc, unitInfo, boneInfo))
 			weights = modeler.WriteWeights(doc, mesh.BoneWeights)
 			joints = modeler.WriteJoints(doc, mesh.BoneIndices)
 		}
