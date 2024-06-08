@@ -11,4 +11,4 @@ struct Animation {
 };
 
 offset = std::mem::size() - 4;
-Animation animation[while(offset > 0)] @$;
+Animation animation[while(offset > 0)] @0x00;
