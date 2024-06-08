@@ -2,7 +2,7 @@
 #include <std/io.pat>
 #include <std/core.pat>
 
-#pragma pattern_limit 2097152
+#pragma pattern_limit 8388608
 #pragma array_limit 524288
 
 fn relative_to_parents_parent(u128 offset) {
@@ -108,20 +108,19 @@ struct JointList {
 };
 
 struct MeshGroup {
-    u8 unk00[4];
+    u32 StartGroupId;
     u32 VertexOffset;
     u32 NumVertices;
     u32 IndexOffset;
     u32 NumIndices;
-    u8 unk01[4];
+    u32 EndGroupId; // Group IDs should be identical
 };
 
-struct MeshGroupPtr {
-    MeshGroup *data : u32 [[pointer_base("relative_to_parents_parent"), inline]];
+struct MeshGroupList {
+    MeshGroup Groups[parent.NumGroups];
 };
 
 struct MeshHeader {
-    //u8 unk00[60];
     u32 unk00[2];
     AABB bounding_box;
     float unkFloat;
@@ -134,7 +133,7 @@ struct MeshHeader {
     u8 *MaterialOffset : u32 [[pointer_base("relative_to_parent")]];
     u8 unk02[8];
     u32 NumGroups;
-    MeshGroupPtr Groups[NumGroups];
+    MeshGroupList *Groups : u32 [[pointer_base("relative_to_parent")]];
 };
 
 enum MeshLayoutItemType : u32 {
@@ -297,7 +296,7 @@ struct IndexGroup<auto Stride> {
 
 fn copyGroupsToSection() {
     for(u32 i = 0, i < currentInfo.header.NumGroups, i = i + 1) {
-        std::mem::copy_value_to_section(parent.parent.parent.MeshInfoListOffset.MeshInfos[std::core::array_index()].ptr.header.Groups[i].data, meshWorkspace, addressof(Groups) + sizeof(currentGroup) * i);
+        std::mem::copy_value_to_section(parent.parent.parent.MeshInfoListOffset.MeshInfos[std::core::array_index()].ptr.header.Groups.Groups[i], meshWorkspace, addressof(Groups) + sizeof(currentGroup) * i);
     }
 };
 
