@@ -237,19 +237,29 @@ struct SkeletonMapJointIndices {
     u32 data[parent.count];
 };
 
-struct SkeletonMapRemapIndices {
-    u32 unk00;
-    u32 unk01;
+struct SkeletonMapRemapData {
+    u64 indicesOffsetAddress = $;
+    $ += 4;
     u32 count;
-    u32 data[count];
+    $ = indicesOffsetAddress;
+    SkeletonMapJointIndices *remapIndicesOffset : u32 [[pointer_base("relative_to_parents_parent"), inline]];
+    $ += 4;
 };
+
+struct SkeletonMapRemapIndicesList {
+    u32 count;
+    SkeletonMapRemapData data[count];
+};
+
+struct SkeletonMapMatrixList {
+    Mat4x4 data[parent.count];
+} [[inline]];
 
 struct SkeletonMapItem {
     u32 count;
-    u32 unk00;
+    SkeletonMapMatrixList *matrices : u32 [[pointer_base("relative_to_parent")]];
     SkeletonMapJointIndices *unitIndices : u32 [[pointer_base("relative_to_parent")]];
-    SkeletonMapRemapIndices *remapIndices : u32 [[pointer_base("relative_to_parent")]];
-    Mat4x4 matrices[count];
+    SkeletonMapRemapIndicesList *remapIndices : u32 [[pointer_base("relative_to_parent")]];
 };
 
 struct SkeletonMapItemPtr {
