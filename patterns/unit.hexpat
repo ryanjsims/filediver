@@ -1,6 +1,29 @@
 #include <std/ptr.pat>
-#include <std/io.pat>
 #include <std/core.pat>
+
+// import stingray; // Not sure where to put custom library files yet =/
+// stingray.hexpat
+import std.io;
+
+using ThinMurmurHash;
+using MurmurHash;
+
+fn formatThinHash(ThinMurmurHash hash) {
+    return std::format("{:08X}", hash.value);
+};
+
+fn formatHash(MurmurHash value) {
+    return std::format("{:016X}", hash.value);
+};
+
+struct ThinMurmurHash {
+    u32 value;
+} [[format("formatThinHash")]];
+
+struct MurmurHash {
+    u64 value;
+} [[format("formatHash")]];
+// end stingray.hexpat
 
 #pragma pattern_limit 8388608
 #pragma array_limit 524288
@@ -27,14 +50,6 @@ struct Mat4x4 {
 
 struct maxMin {
     float max, min;
-};
-
-struct MurmurHash {
-    u64 value;
-};
-
-struct ThinMurmurHash {
-    u32 value;
 };
 
 struct LODGroupHeader {
@@ -369,7 +384,7 @@ struct Header {
     u8 unk05[8];
     MaterialList *MaterialListOffset : u32;
     $ = meshDataListAddress;
-    MeshDataList *MeshDataOffset : u32;
+    //MeshDataList *MeshDataOffset : u32;
 };
 
 Header hdr @0x0;

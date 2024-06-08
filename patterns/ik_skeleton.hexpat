@@ -1,4 +1,27 @@
 import std.mem;
+// import stingray; // Not sure where to put custom library files yet =/
+// stingray.hexpat
+import std.io;
+
+using ThinMurmurHash;
+using MurmurHash;
+
+fn formatThinHash(ThinMurmurHash hash) {
+    return std::format("{:08X}", hash.value);
+};
+
+fn formatHash(MurmurHash value) {
+    return std::format("{:016X}", hash.value);
+};
+
+struct ThinMurmurHash {
+    u32 value;
+} [[format("formatThinHash")]];
+
+struct MurmurHash {
+    u64 value;
+} [[format("formatHash")]];
+// end stingray.hexpat
 
 struct quaternion {
     float x, y, z, w;
