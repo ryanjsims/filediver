@@ -35,32 +35,50 @@ struct Name {
 };
 
 struct Header {
-    u32 unkHashes[4];
+    ThinMurmurHash unkHashes[4];
     u32 size;
     u8 unk00[16];
     u32 shortCount0;
     u32 shortCount1;
     u32 firstSectionSize;
     u8 unk01[24];
+    // Quite likely to be a bone to ik bone index map
     u16 shorts00[shortCount0];
     s16 shorts01[shortCount1];
+
     std::mem::AlignTo<16> align0;
 };
 
 bitfield PacketHeader {
     padding : 1;
-    bool child : 1;
+    bool leaf : 1;
     padding : 6;
 };
+
+enum Type : char[4] {
+    ROOT = "TAG0",
+    VERSION = "SDKV",
+    DATA = "DATA",
+    TYPES = "TYPE",
+    TYPE_PTRS = "TPTR",
+    TYPE_STRS = "TST1",
+    TYPE_NAME_IDXS = "TNA1",
+};
+
+struct PacketData {
+    match (parent.type) {
+        u8 data[size - 8];
+    }
+} [[inline]];
 
 struct Packet {
     be PacketHeader header;
     be u24 size;
-    char name[4];
-    if(!header.child) {
+    char type[4];
+    if(!header.leaf) {
         Packet children[while($ < (addressof(this) + size))];
     } else {
-        u8 data[size - 8];
+        PacketData data;
     }
 };
 
