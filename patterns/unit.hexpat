@@ -164,6 +164,12 @@ enum MeshLayoutItemFormat : u32 {
     FormatVec2F,
     FormatVec3F,
     FormatVec4F,
+    // U32 Vec 1-3 not actually observed yet, just an assumption
+    FormatU32 = 17,
+    FormatVec2U32,
+    FormatVec3U32,
+    // U32 Vec 4 is actually observed
+    FormatVec4U32,
     FormatVec4S8 = 24,
     FormatVec4U8 = 26,
     FormatF16 = 28,
@@ -178,7 +184,11 @@ fn formatSize(MeshLayoutItemFormat format) {
         (MeshLayoutItemFormat::FormatVec2F): return 8;
         (MeshLayoutItemFormat::FormatVec3F): return 12;
         (MeshLayoutItemFormat::FormatVec4F): return 16;
-        (MeshLayoutItemFormat::FormatVec4Norm8): return 4;
+        (MeshLayoutItemFormat::FormatU32): return 4;
+        (MeshLayoutItemFormat::FormatVec2U32): return 8;
+        (MeshLayoutItemFormat::FormatVec3U32): return 12;
+        (MeshLayoutItemFormat::FormatVec4U32): return 16;
+        (MeshLayoutItemFormat::FormatVec4S8): return 4;
         (MeshLayoutItemFormat::FormatVec4U8): return 4;
         (MeshLayoutItemFormat::FormatF16): return 2;
         (MeshLayoutItemFormat::FormatVec2F16): return 4;
