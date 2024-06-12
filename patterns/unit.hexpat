@@ -12,7 +12,7 @@ fn formatThinHash(ThinMurmurHash hash) {
     return std::format("{:08X}", hash.value);
 };
 
-fn formatHash(MurmurHash value) {
+fn formatHash(MurmurHash hash) {
     return std::format("{:016X}", hash.value);
 };
 
@@ -321,13 +321,13 @@ struct IndexGroup<auto Stride> {
 
 fn copyGroupsToSection() {
     for(u32 i = 0, i < currentInfo.header.NumGroups, i = i + 1) {
-        std::mem::copy_value_to_section(parent.parent.parent.MeshInfoListOffset.MeshInfos[std::core::array_index()].ptr.header.Groups.Groups[i], meshWorkspace, addressof(Groups) + sizeof(currentGroup) * i);
+        std::mem::copy_value_to_section(parent.parent.parent.parent.MeshInfoListOffset.data.MeshInfos[std::core::array_index()].ptr.header.Groups.Groups[i], meshWorkspace, addressof(Groups) + sizeof(currentGroup) * i);
     }
 };
 
 struct MeshData {
-    std::mem::copy_value_to_section(parent.parent.MeshInfoListOffset.MeshInfos[std::core::array_index()].ptr, meshWorkspace, addressof(currentInfo));
-    std::mem::copy_value_to_section(parent.parent.MeshLayoutListOffset.layouts[currentInfo.header.LayoutIdx].data, meshWorkspace, addressof(currentLayout));
+    std::mem::copy_value_to_section(parent.parent.parent.MeshInfoListOffset.data.MeshInfos[std::core::array_index()].ptr, meshWorkspace, addressof(currentInfo));
+    std::mem::copy_value_to_section(parent.parent.parent.MeshLayoutListOffset.data.layouts[currentInfo.header.LayoutIdx].data, meshWorkspace, addressof(currentLayout));
     copyGroupsToSection();
     std::print("Stride: {}", currentLayout.VertexStride);
     std::print("Groups: {}", currentInfo.header.NumGroups);
@@ -360,6 +360,17 @@ struct UnknownMatricesList {
     UnknownMatrixItem matrices[count];
 };
 
+struct UnkHashListItem {
+    ThinMurmurHash hash;
+    u32 unk00;
+    u32 unk01;
+};
+
+struct UnkHashList {
+    u32 count;
+    UnkHashListItem items[count];
+};
+
 struct Header {
     u8 unk00[8];
     MurmurHash bones;
@@ -367,24 +378,24 @@ struct Header {
     MurmurHash unkHash00;
     MurmurHash stateMachine;
     u8 unk02[8];
-    LODGroupPtrList *LODGroupListOffset : u32;
-    JointList *JointListOffset : u32;
-    UnknownMatricesList *UnkOffset01 : u32;
-    u8 *UnkOffset02 : u32;
-    SoundCallbackData *UnkOffset03 : u32;
+    std::ptr::NullablePtr<LODGroupPtrList, u32> LODGroupListOffset;
+    std::ptr::NullablePtr<JointList, u32> JointListOffset;
+    std::ptr::NullablePtr<UnknownMatricesList, u32> UnkOffset01;
+    std::ptr::NullablePtr<u8, u32> UnkOffset02;
+    std::ptr::NullablePtr<SoundCallbackData, u32> UnkOffset03;
     u8 unk03[8];
-    u8 *UnkOffset04 : u32;
-    u8 *UnkOffset05 : u32;
-    u8 unk04[4];
-    SkeletonMapList *skeletonMaps : u32;
-    MeshLayoutList *MeshLayoutListOffset: u32;
+    std::ptr::NullablePtr<CustomizationInfoList, u32> CustomizationInfoListOffset;
+    std::ptr::NullablePtr<u8, u32> UnkOffset05;
+    std::ptr::NullablePtr<UnkHashList, u32> UnkHashListOffset;
+    std::ptr::NullablePtr<SkeletonMapList, u32> skeletonMaps;
+    std::ptr::NullablePtr<MeshLayoutList, u32> MeshLayoutListOffset;
     u64 meshDataListAddress = $;
     $ += 4;
-    MeshInfoList *MeshInfoListOffset: u32;
+    std::ptr::NullablePtr<MeshInfoList, u32> MeshInfoListOffset;
     u8 unk05[8];
-    MaterialList *MaterialListOffset : u32;
+    std::ptr::NullablePtr<MaterialList, u32> MaterialListOffset;
     $ = meshDataListAddress;
-    //MeshDataList *MeshDataOffset : u32;
+    std::ptr::NullablePtr<MeshDataList, u32> MeshDataOffset;
 };
 
 Header hdr @0x0;
