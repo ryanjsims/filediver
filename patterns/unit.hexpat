@@ -369,6 +369,32 @@ struct UnknownMatricesList {
     UnknownMatrixItem matrices[count];
 };
 
+u128 rootAddress = 0;
+fn relative_to_root(u128 offset) {
+    return rootAddress;
+};
+
+struct CustomizationInfoNode {
+    ThinMurmurHash hash;
+    s32 nextNodeOffset [[no_unique_address, hidden]];
+    $ += 4;
+    u32 unk00;
+    u32 nameCapacity;
+    char name[nameCapacity];
+    $ = addressof(nextNodeOffset);
+    if(nextNodeOffset == -1) {
+        padding[4];
+    } else {
+        CustomizationInfoNode *next : u32 [[pointer_base("relative_to_root")]];
+    }
+};
+
+struct CustomizationInfoList {
+    u32 totalSize;
+    rootAddress = $;
+    CustomizationInfoNode *root : u32 [[pointer_base("relative_to_root")]];
+};
+
 struct UnkHashListItem {
     ThinMurmurHash hash;
     u32 unk00;
