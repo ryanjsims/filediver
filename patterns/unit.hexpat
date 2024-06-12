@@ -298,20 +298,29 @@ MeshLayout currentLayout @sizeof(currentInfo) in meshWorkspace;
 MeshGroup Groups[32] @sizeof(currentInfo) + sizeof(currentLayout) in meshWorkspace;
 MeshGroup currentGroup @sizeof(currentInfo) + sizeof(currentLayout) + sizeof(Groups) in meshWorkspace;
 
+u32 MeshDataOffset = 4;
+
+fn calculateMeshDataOffset(u32 meshOffset) {
+    while(std::mem::read_unsigned(meshOffset + MeshDataOffset, 1) == 0x00) {
+        MeshDataOffset = MeshDataOffset + 1;
+    }
+    std::print("MeshDataOffset = {}", MeshDataOffset);
+};
+
 struct Vertex<auto Stride> {
     u8 data[Stride];
 };
 
 struct VertexGroup<auto Stride> {
     std::mem::copy_value_to_section(Groups[std::core::array_index()], meshWorkspace, addressof(currentGroup));
-    $ = addressof(parent.parent) + currentLayout.VertexOffset + currentGroup.VertexOffset * currentLayout.VertexStride + 12;
+    $ = addressof(parent.parent) + currentLayout.VertexOffset + currentGroup.VertexOffset * currentLayout.VertexStride + MeshDataOffset;
     Vertex<Stride> vertices[currentGroup.NumVertices];
 };
 
 struct IndexGroup<auto Stride> {
     std::mem::copy_value_to_section(Groups[std::core::array_index()], meshWorkspace, addressof(currentGroup));
     std::print("Base: {:x} Layout offset: {:x} Group offset: {} Stride: {}", addressof(parent.parent), currentLayout.IndexOffset, currentGroup.IndexOffset, Stride);
-    $ = addressof(parent.parent) + currentLayout.IndexOffset + currentGroup.IndexOffset * Stride + 12;
+    $ = addressof(parent.parent) + currentLayout.IndexOffset + currentGroup.IndexOffset * Stride + MeshDataOffset;
     match(Stride) {
         (1): u8 Indices[currentGroup.NumIndices];
         (2): u16 Indices[currentGroup.NumIndices];
@@ -395,6 +404,7 @@ struct Header {
     u8 unk05[8];
     std::ptr::NullablePtr<MaterialList, u32> MaterialListOffset;
     $ = meshDataListAddress;
+    calculateMeshDataOffset(std::mem::read_unsigned(meshDataListAddress, 4));
     std::ptr::NullablePtr<MeshDataList, u32> MeshDataOffset;
 };
 
