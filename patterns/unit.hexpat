@@ -141,12 +141,16 @@ struct MeshHeader {
     float unkFloat;
     u32 unkInt0;
     ThinMurmurHash unkHash;
-    u32 unkInts[4];
+    u32 unkInts[3];
+    u32 SkeletonMapIdx;
     s32 LayoutIdx;
     u8 unk01[40];
     u32 NumMaterials;
     u8 *MaterialOffset : u32 [[pointer_base("relative_to_parent")]];
-    u8 unk02[8];
+    u64 unk02;
+    if(unk02 != 0) {
+        std::print("Non-zero unk02 in MeshHeader {:d}! 0x{:016X}", std::core::array_index());
+    }
     u32 NumGroups;
     MeshGroupList *Groups : u32 [[pointer_base("relative_to_parent")]];
 };
