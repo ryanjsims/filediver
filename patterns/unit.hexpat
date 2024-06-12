@@ -55,7 +55,7 @@ struct maxMin {
 struct LODGroupHeader {
     u32 unk00;
     ThinMurmurHash unkHash00;
-    u32 unk01, unk02;
+    u32 unk01;
 };
 
 struct LODEntry {
@@ -81,11 +81,16 @@ struct LODGroupFooter {
     u32 unk01;
 };
 
+struct LODGroupFooterPtr {
+    LODGroupFooter *ptr : u32 [[pointer_base("relative_to_parents_parent"), inline]];
+};
+
 struct LODGroup {
     LODGroupHeader header;
+    u32 footerCount;
     u32 entryCount;
     LODEntryPtr entryOffsets[entryCount];
-    LODGroupFooter *footer : u32 [[pointer_base("relative_to_parent")]];
+    LODGroupFooterPtr footer[footerCount];
 };
 
 struct LODGroupPtr {
