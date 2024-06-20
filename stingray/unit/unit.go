@@ -132,6 +132,10 @@ const (
 	FormatVec2F     MeshLayoutItemFormat = 1
 	FormatVec3F     MeshLayoutItemFormat = 2
 	FormatVec4F     MeshLayoutItemFormat = 3
+	FormatU32       MeshLayoutItemFormat = 17
+	FormatVec2U32   MeshLayoutItemFormat = 18
+	FormatVec3U32   MeshLayoutItemFormat = 19
+	FormatVec4U32   MeshLayoutItemFormat = 20
 	FormatVec4S8    MeshLayoutItemFormat = 24
 	FormatVec4Norm8 MeshLayoutItemFormat = 25
 	FormatVec4U8    MeshLayoutItemFormat = 26
@@ -151,6 +155,14 @@ func (v MeshLayoutItemFormat) String() string {
 		return "[3]float32"
 	case FormatVec4F:
 		return "[4]float32"
+	case FormatU32:
+		return "uint32"
+	case FormatVec2U32:
+		return "[2]uint32"
+	case FormatVec3U32:
+		return "[3]uint32"
+	case FormatVec4U32:
+		return "[4]uint32"
 	case FormatVec4S8:
 		return "[4]int8"
 	case FormatVec4Norm8:
@@ -364,6 +376,16 @@ func loadMesh(gpuR io.ReadSeeker, info MeshInfo, layout MeshLayout) (Mesh, error
 				case ItemBoneWeight:
 					var val [4]float32
 					switch item.Format {
+					case FormatVec2F16:
+						var tmp [2]uint16
+						if err := binary.Read(gpuR, binary.LittleEndian, &tmp); err != nil {
+							return Mesh{}, err
+						}
+						for i := range tmp {
+							val[i] = float16.Frombits(tmp[i]).Float32()
+						}
+						val[2] = 0
+						val[3] = 0
 					case FormatVec4F16:
 						var tmp [4]uint16
 						if err := binary.Read(gpuR, binary.LittleEndian, &tmp); err != nil {
@@ -380,11 +402,22 @@ func loadMesh(gpuR io.ReadSeeker, info MeshInfo, layout MeshLayout) (Mesh, error
 						for i := range tmp {
 							val[i] = float32(tmp[i]) / 255.0
 						}
+					case FormatF32:
+						if err := binary.Read(gpuR, binary.LittleEndian, &val[0]); err != nil {
+							return Mesh{}, err
+						}
+						val[1] = 0
+						val[2] = 0
+						val[3] = 0
 					default:
-						return Mesh{}, fmt.Errorf("expected bone index item to have format [4]float16 or [4]uint8, but got: %v", item.Format.String())
+						return Mesh{}, fmt.Errorf("expected bone weight item to have format [4]float16 or [4]uint8, but got: %v", item.Format.String())
 					}
 					mesh.BoneWeights = append(mesh.BoneWeights, val)
 				case ItemBoneIdx:
+					if item.Layer != 0 {
+						// TODO: support multiple bone index layers and extra data types
+						break
+					}
 					if item.Format != FormatVec4S8 {
 						return Mesh{}, fmt.Errorf("expected bone index item to have format [4]uint8, but got: %v", item.Format.String())
 					}
