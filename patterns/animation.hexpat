@@ -10,7 +10,7 @@ fn formatThinHash(ThinMurmurHash hash) {
     return std::format("{:08X}", hash.value);
 };
 
-fn formatHash(MurmurHash value) {
+fn formatHash(MurmurHash hash) {
     return std::format("{:016X}", hash.value);
 };
 
