@@ -95,6 +95,16 @@ var ConfigFormat = ConfigTemplate{
 					Type: ConfigValueEnum,
 					Enum: []string{"png", "dds", "source"},
 				},
+				"width": {
+					Type:        ConfigValueIntRange,
+					IntRangeMin: 0,
+					IntRangeMax: 0x7fffffff,
+				},
+				"height": {
+					Type:        ConfigValueIntRange,
+					IntRangeMin: 0,
+					IntRangeMax: 0x7fffffff,
+				},
 			},
 		},
 		"unit": {
