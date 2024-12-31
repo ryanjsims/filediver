@@ -19,6 +19,7 @@ import (
 	extr_bik "github.com/xypwn/filediver/extractor/bik"
 	extr_material "github.com/xypwn/filediver/extractor/material"
 	extr_package "github.com/xypwn/filediver/extractor/package"
+	extr_prefab "github.com/xypwn/filediver/extractor/prefab"
 	extr_strings "github.com/xypwn/filediver/extractor/strings"
 	extr_texture "github.com/xypwn/filediver/extractor/texture"
 	extr_unit "github.com/xypwn/filediver/extractor/unit"
@@ -165,6 +166,15 @@ var ConfigFormat = ConfigTemplate{
 				"format": {
 					Type: ConfigValueEnum,
 					Enum: []string{"json", "source"},
+				},
+			},
+		},
+		"prefab": {
+			Category: "model",
+			Options: map[string]ConfigTemplateOption{
+				"format": {
+					Type: ConfigValueEnum,
+					Enum: []string{"glb", "source", "blend", "blend_glb"},
 				},
 			},
 		},
@@ -657,6 +667,17 @@ func (a *App) ExtractFile(ctx context.Context, id stingray.FileID, outDir string
 			extr = extractor.ExtractFuncRaw(".package", stingray.DataMain, stingray.DataStream, stingray.DataGPU)
 		} else {
 			extr = extr_package.ExtractPackageJSON
+		}
+	case "prefab":
+		if cfg["format"] == "source" {
+			extr = extractor.ExtractFuncRaw(".prefab", stingray.DataMain, stingray.DataStream, stingray.DataGPU)
+		} else {
+			unitCfg := extrCfg["unit"]
+			if unitCfg == nil {
+				unitCfg = make(map[string]string)
+				unitCfg["format"] = cfg["format"]
+			}
+			extr = extr_prefab.Convert(gltfDoc, unitCfg)
 		}
 	default:
 		extr = extractor.ExtractFuncRaw("."+typ, stingray.DataMain, stingray.DataStream, stingray.DataGPU)
