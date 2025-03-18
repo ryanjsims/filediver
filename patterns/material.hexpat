@@ -1220,16 +1220,20 @@ struct SettingsListItem {
     SettingsUsage setting;
     u32 offset;
     u32 stride;
+} [[format("SettingsListItemFormat")]];
+
+fn SettingsListItemFormat(SettingsListItem item) {
+    return std::core::formatted_value(item.setting);
 };
 
 struct SettingsValue {
     $ = parent.base + parent.items[std::core::array_index()].offset;
     if(parent.items[std::core::array_index()].type == SettingsType::Vector3) {
-        float value[3];
+        float value[3] [[inline]];
     } else if(parent.items[std::core::array_index()].type == SettingsType::Vector2) {
-        float value[2];
+        float value[2] [[inline]];
     } else if(parent.items[std::core::array_index()].type == SettingsType::Vector4) {
-        float value[4];
+        float value[4] [[inline]];
     } else if(parent.items[std::core::array_index()].type == SettingsType::Other) {
         u32 size = parent.items[std::core::array_index()].stride * parent.items[std::core::array_index()].count;
         u8 data[size];
