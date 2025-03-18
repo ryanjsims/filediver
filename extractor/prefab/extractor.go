@@ -10,6 +10,7 @@ import (
 	"github.com/xypwn/filediver/extractor"
 	extr_unit "github.com/xypwn/filediver/extractor/unit"
 	"github.com/xypwn/filediver/stingray"
+	dlbin "github.com/xypwn/filediver/stingray/dl_bin"
 	"github.com/xypwn/filediver/stingray/prefab"
 )
 
@@ -28,8 +29,17 @@ func (c *unitContext) GetResource(name, typ stingray.Hash) (file *stingray.File,
 func (c *unitContext) CreateFile(suffix string) (io.WriteCloser, error) {
 	return c.ctx.CreateFile(suffix)
 }
-func (c *unitContext) AllocateFile(suffix string) (string, error) { return c.ctx.AllocateFile(suffix) }
-func (c *unitContext) Ctx() context.Context                       { return c.ctx.Ctx() }
+func (c *unitContext) AllocateFile(suffix string) (string, error)  { return c.ctx.AllocateFile(suffix) }
+func (c *unitContext) Ctx() context.Context                        { return c.ctx.Ctx() }
+func (c *unitContext) ArmorSets() map[stingray.Hash]dlbin.ArmorSet { return c.ctx.ArmorSets() }
+func (c *unitContext) Hashes() map[stingray.Hash]string            { return c.ctx.Hashes() }
+func (c *unitContext) ThinHashes() map[stingray.ThinHash]string    { return c.ctx.ThinHashes() }
+
+// Selected triad ID, if any (-t option).
+func (c *unitContext) TriadIDs() []stingray.Hash { return c.ctx.TriadIDs() }
+
+// Prints a warning message.
+func (c *unitContext) Warnf(f string, a ...any) { c.ctx.Warnf(f, a...) }
 
 func newUnitCtx(ctx extractor.Context, file *stingray.File, config map[string]string) *unitContext {
 	return &unitContext{
@@ -194,7 +204,7 @@ func ConvertOpts(ctx extractor.Context, unitCfg map[string]string, gltfDoc *gltf
 		}
 	}
 
-	if gltfDoc == nil && (ctx.Config()["format"] == "glb" || ctx.Config()["format"] == "blend_glb") {
+	if gltfDoc == nil && (ctx.Config()["format"] == "glb" || ctx.Config()["format"] == "") {
 		out, err := ctx.CreateFile(".glb")
 		if err != nil {
 			return err
