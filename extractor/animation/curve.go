@@ -16,6 +16,20 @@ type QuaternionKeyframe struct {
 	Quaternion mgl32.Quat
 }
 
+type GLTFVectorCubicSplineKeyframe struct {
+	Time       float32
+	InTangent  mgl32.Vec3
+	Vector     mgl32.Vec3
+	OutTangent mgl32.Vec3
+}
+
+type GLTFQuaternionCubicSplineKeyframe struct {
+	Time       float32
+	InTangent  mgl32.Quat
+	Quaternion mgl32.Quat
+	OutTangent mgl32.Quat
+}
+
 type VectorCurve struct {
 	Keyframes     []VectorKeyframe
 	Duration      float32
@@ -90,6 +104,51 @@ func (c *VectorCurve) Sample(framerate int) []VectorKeyframe {
 	return toReturn
 }
 
+func (c *VectorCurve) ToGLTF() []GLTFVectorCubicSplineKeyframe {
+	toReturn := make([]GLTFVectorCubicSplineKeyframe, 0)
+	toReturn = append(toReturn, GLTFVectorCubicSplineKeyframe{
+		Time:       0.0,
+		InTangent:  mgl32.Vec3{0, 0, 0},
+		Vector:     c.Keyframes[0].Vector,
+		OutTangent: mgl32.Vec3{0, 0, 0},
+	})
+	if len(c.Keyframes) == 1 {
+		toReturn = append(toReturn, GLTFVectorCubicSplineKeyframe{
+			Time:       c.Duration,
+			InTangent:  mgl32.Vec3{0, 0, 0},
+			Vector:     c.Keyframes[0].Vector,
+			OutTangent: mgl32.Vec3{0, 0, 0},
+		})
+		return toReturn
+	}
+	// T[i]   = 0.5 * (P[i+1] - P[i-1])
+	// T[i+1] = 0.5 * (P[i+2] - P[i])
+	c.HermiteFrames = [4]VectorKeyframe{
+		c.Keyframes[0], // P[i-1]
+		c.Keyframes[0], // P[i]
+		c.Keyframes[0], // P[i+1]
+		c.Keyframes[0], // P[i+2]
+	}
+	c.CurrentIndex = 1
+	c.ShiftFrame()
+	c.ShiftFrame()
+	for i := 1; i < len(c.Keyframes); i++ {
+		p2 := c.HermiteFrames[2].Vector
+		t1 := c.HermiteFrames[2].Vector.Sub(c.HermiteFrames[0].Vector).Mul(1 / (c.HermiteFrames[2].Time - c.HermiteFrames[0].Time))
+		t2 := c.HermiteFrames[3].Vector.Sub(c.HermiteFrames[1].Vector).Mul(1 / (c.HermiteFrames[3].Time - c.HermiteFrames[1].Time))
+
+		toReturn = append(toReturn, GLTFVectorCubicSplineKeyframe{
+			Time:       c.HermiteFrames[2].Time,
+			InTangent:  t1,
+			Vector:     p2,
+			OutTangent: t2,
+		})
+
+		c.ShiftFrame()
+	}
+	return toReturn
+}
+
 type QuaternionCurve struct {
 	Keyframes     []QuaternionKeyframe
 	Duration      float32
@@ -160,6 +219,51 @@ func (c *QuaternionCurve) Sample(framerate int) []QuaternionKeyframe {
 			Time:       currentTime,
 			Quaternion: p,
 		})
+	}
+	return toReturn
+}
+
+func (c *QuaternionCurve) ToGLTF() []GLTFQuaternionCubicSplineKeyframe {
+	toReturn := make([]GLTFQuaternionCubicSplineKeyframe, 0)
+	toReturn = append(toReturn, GLTFQuaternionCubicSplineKeyframe{
+		Time:       0.0,
+		InTangent:  mgl32.Vec4{0, 0, 0, 0}.Quat(),
+		Quaternion: c.Keyframes[0].Quaternion,
+		OutTangent: mgl32.Vec4{0, 0, 0, 0}.Quat(),
+	})
+	if len(c.Keyframes) == 1 {
+		toReturn = append(toReturn, GLTFQuaternionCubicSplineKeyframe{
+			Time:       c.Duration,
+			InTangent:  mgl32.Vec4{0, 0, 0, 0}.Quat(),
+			Quaternion: c.Keyframes[0].Quaternion,
+			OutTangent: mgl32.Vec4{0, 0, 0, 0}.Quat(),
+		})
+		return toReturn
+	}
+	// T[i]   = 0.5 * (P[i+1] - P[i-1])
+	// T[i+1] = 0.5 * (P[i+2] - P[i])
+	c.HermiteFrames = [4]QuaternionKeyframe{
+		c.Keyframes[0], // P[i-1]
+		c.Keyframes[0], // P[i]
+		c.Keyframes[0], // P[i+1]
+		c.Keyframes[0], // P[i+2]
+	}
+	c.CurrentIndex = 1
+	c.ShiftFrame()
+	c.ShiftFrame()
+	for i := 1; i < len(c.Keyframes); i++ {
+		p2 := c.HermiteFrames[2].Quaternion
+		t1 := c.HermiteFrames[2].Quaternion.Sub(c.HermiteFrames[0].Quaternion).Scale(1 / (c.HermiteFrames[2].Time - c.HermiteFrames[0].Time))
+		t2 := c.HermiteFrames[3].Quaternion.Sub(c.HermiteFrames[1].Quaternion).Scale(1 / (c.HermiteFrames[3].Time - c.HermiteFrames[1].Time))
+
+		toReturn = append(toReturn, GLTFQuaternionCubicSplineKeyframe{
+			Time:       c.HermiteFrames[2].Time,
+			InTangent:  t1,
+			Quaternion: p2,
+			OutTangent: t2,
+		})
+
+		c.ShiftFrame()
 	}
 	return toReturn
 }
