@@ -1006,11 +1006,13 @@ func LoadGLTF(ctx *extractor.Context, gpuR io.ReadSeeker, doc *gltf.Document, na
 				flipNormals(buffer, indexAccessor.ComponentType, group.NumIndices, bufferOffset)
 			}
 
-			mask, contains := visibilityMaskData[name]
+			entityName := name
+			if cfg.Unit.EntityName != "" {
+				entityName = stingray.Sum(cfg.Unit.EntityName)
+			}
+			mask, contains := visibilityMaskData[entityName]
 			if !contains {
-				if strings.Contains(ctx.LookupHash(name), "cha_lieutenant") {
-					// For some reason neither of the hulk models are in the visibility masks, but an invalid filename is?
-					// Not sure how the game looks them up in this case, probably need to investigate more
+				if strings.Contains(ctx.LookupHash(entityName), "cha_lieutenant") {
 					mask, contains = visibilityMaskData[stingray.Sum("content/fac_cyborgs/cha_lieutenant/cha_lieutenant_assault")]
 				}
 			}
