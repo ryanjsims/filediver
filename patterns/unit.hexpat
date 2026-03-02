@@ -958,9 +958,9 @@ struct ConnectingBoneHashList {
     ConnectingBoneHashListItem items[count];
 };
 
-struct TerrainMeshUVVertex {
-    float u, v;
-    s32 unk0, unk1, unk2, unk3;
+struct TerrainQuadtreeNode {
+    float min, max;
+    s32 children[4];
 };
 
 struct TerrainTextureData {
@@ -976,10 +976,11 @@ struct TerrainMeshInfo {
     float unkFloat;
     u32 count;
     u32 unkInt;
-    MurmurHash hash;
-    u32 meshUVOffset;
-    u32 meshUVCount;
-    TerrainMeshUVVertex uvs[meshUVCount] @ base + meshUVOffset;
+    ThinMurmurHash parentBone;
+    ThinMurmurHash name;
+    u32 quadtreeOffset;
+    u32 quadtreeCount;
+    TerrainQuadtreeNode nodes[quadtreeCount] @ base + quadtreeOffset;
     u32 compressedOffset;
     u32 compressedSize;
     u8 compressedValues[compressedSize] @ base + compressedOffset;

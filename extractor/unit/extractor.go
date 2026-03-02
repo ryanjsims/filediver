@@ -559,6 +559,111 @@ func AddLights(ctx *extractor.Context, doc *gltf.Document, unitInfo *unit.Info, 
 	}
 }
 
+type quadtreeLocation struct {
+	Index int32
+	X     [2]float32
+	Y     [2]float32
+}
+
+func AddTerrain(ctx *extractor.Context, doc *gltf.Document, unitInfo *unit.Info, meshNodes *[]uint32) []uint32 {
+	terrainNodes := make([]uint32, 0)
+	for _, terrainInfo := range unitInfo.TerrainInfos {
+		quadtreeBreadthFloat := float64(len(terrainInfo.QuadtreeNodes))
+		layer := float64(0)
+		for quadtreeBreadthFloat > 0 && math.Mod(math.Log(quadtreeBreadthFloat)/math.Log(4), 1.0) > 0.001 {
+			quadtreeBreadthFloat -= math.Pow(4, layer)
+			layer += 1
+		}
+		// quadtreeBreadth := uint32(quadtreeBreadthFloat)
+		if uint32(math.Sqrt(float64(len(terrainInfo.HeightmapData)/2))) != terrainInfo.Textures[0].Resolution {
+			ctx.Warnf("terrain %v.unit heightmap data length sqrt != texture[0] resolution: %v != %v", uint32(math.Sqrt(float64(len(terrainInfo.HeightmapData)/2))), terrainInfo.Textures[0].Resolution)
+			return terrainNodes
+		}
+		pixelsPerLeaf := terrainInfo.Textures[0].Resolution / uint32(math.Sqrt(quadtreeBreadthFloat))
+		// metersPerPixel := (terrainInfo.AABB.Max[0] - terrainInfo.AABB.Min[0]) / float32(terrainInfo.Textures[0].Resolution)
+		terrainValues := make([]uint16, len(terrainInfo.HeightmapData)/2)
+		if _, err := binary.Decode(terrainInfo.HeightmapData, binary.LittleEndian, terrainValues); err != nil {
+			ctx.Warnf("decoding terrain values: %v", err)
+			return terrainNodes
+		}
+		// nodeQueue := make([]quadtreeLocation, 0)
+		var splitTree func(nodes []unit.QuadtreeNode, index int32, xMin, yMin, xMax, yMax float32) []quadtreeLocation
+		splitTree = func(nodes []unit.QuadtreeNode, index int32, xMin, yMin, xMax, yMax float32) []quadtreeLocation {
+			locations := make([]quadtreeLocation, 0)
+			root := nodes[index]
+			centerX := (xMax + xMin) / 2
+			centerY := (yMax + yMin) / 2
+			if root.Children[0] != -1 && root.Children[1] != -1 && root.Children[2] != -1 && root.Children[3] != -1 {
+				// bottom left
+				locations = append(locations, splitTree(nodes, root.Children[1], xMin, yMin, centerX, centerY)...)
+				// bottom right
+				locations = append(locations, splitTree(nodes, root.Children[2], centerX, yMin, xMax, centerY)...)
+				// top left
+				locations = append(locations, splitTree(nodes, root.Children[3], xMin, centerY, centerX, yMax)...)
+				// top right
+				locations = append(locations, splitTree(nodes, root.Children[0], centerX, centerY, xMax, yMax)...)
+			} else {
+				ctx.Warnf("splitting tree: (%v %v) (%v %v)", xMin, yMin, xMax, yMax)
+				locations = append(locations, quadtreeLocation{
+					Index: index,
+					X:     [2]float32{xMin, xMax},
+					Y:     [2]float32{yMin, yMax},
+				})
+			}
+			return locations
+		}
+
+		nodeQueue := splitTree(terrainInfo.QuadtreeNodes, 0, terrainInfo.Min[0], terrainInfo.Min[1], terrainInfo.Max[0], terrainInfo.Max[1])
+
+		decompressHeight := func(value uint16, min, max float32) float32 {
+			percent := float32(value) / 65535.0
+			return percent*(max-min) + min
+		}
+		vertices := make([][3]float32, 0)
+		indices := make([]uint32, 0)
+		terrainIndex := 0
+		for _, location := range nodeQueue {
+			baseIndex := uint32(len(vertices))
+			for y := range pixelsPerLeaf {
+				for x := range pixelsPerLeaf {
+					node := terrainInfo.QuadtreeNodes[location.Index]
+					vertices = append(vertices, [3]float32{
+						(location.X[1]-location.X[0])*(float32(x)/float32(pixelsPerLeaf)) + location.X[0],
+						decompressHeight(terrainValues[terrainIndex], node.Min, node.Max),
+						(location.Y[1]-location.Y[0])*(float32(y)/float32(pixelsPerLeaf)) + location.Y[0],
+					})
+					terrainIndex += 1
+				}
+			}
+			for quadY := range pixelsPerLeaf - 1 {
+				for quadX := range pixelsPerLeaf - 1 {
+					// face 0
+					indices = append(indices, baseIndex+(quadY)*pixelsPerLeaf+(quadX), baseIndex+(quadY+1)*pixelsPerLeaf+(quadX+1), baseIndex+(quadY)*pixelsPerLeaf+(quadX+1))
+					// face 1
+					indices = append(indices, baseIndex+(quadY)*pixelsPerLeaf+(quadX), baseIndex+(quadY+1)*pixelsPerLeaf+(quadX), baseIndex+(quadY+1)*pixelsPerLeaf+(quadX+1))
+				}
+			}
+		}
+		terrainMesh := uint32(len(doc.Meshes))
+		doc.Meshes = append(doc.Meshes, &gltf.Mesh{
+			Primitives: []*gltf.Primitive{{
+				Indices: gltf.Index(modeler.WriteIndices(doc, indices)),
+				Attributes: gltf.Attribute{
+					gltf.POSITION: modeler.WritePosition(doc, vertices),
+				},
+			}},
+		})
+		terrainNode := uint32(len(doc.Nodes))
+		doc.Nodes = append(doc.Nodes, &gltf.Node{
+			Name: ctx.LookupThinHash(terrainInfo.ParentBone) + " " + ctx.LookupThinHash(terrainInfo.Name),
+			Mesh: gltf.Index(terrainMesh),
+		})
+		*meshNodes = append(*meshNodes, terrainNode)
+		terrainNodes = append(terrainNodes, terrainNode)
+	}
+	return terrainNodes
+}
+
 func GetUnitExtrasID(fileId stingray.FileID) string {
 	return fileId.Name.String() + ".unit"
 }
@@ -690,6 +795,10 @@ func ConvertOpts(ctx *extractor.Context, imgOpts *extr_material.ImageOptions, gl
 		if err != nil {
 			return err
 		}
+	}
+
+	if len(unitInfo.TerrainInfos) > 0 {
+		doc.Nodes[*parent].Children = append(doc.Nodes[*parent].Children, AddTerrain(ctx, doc, unitInfo, &meshNodes)...)
 	}
 
 	AddPrefabMetadata(ctx, doc, parent, skin, meshNodes, armorSetName)
