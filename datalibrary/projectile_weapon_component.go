@@ -99,6 +99,16 @@ type SimpleWeaponCameraShakeInfo struct {
 	OuterRadius      float32 `json:"outer_radius"`
 }
 
+func (s WeaponCameraShakeInfo) ToSimple(lookupHash HashLookup, lookupThinHash ThinHashLookup, lookupStrings StringsLookup) SimpleWeaponCameraShakeInfo {
+	return SimpleWeaponCameraShakeInfo{
+		WorldShakeEffect: lookupHash(s.WorldShakeEffect),
+		LocalShakeEffect: lookupHash(s.LocalShakeEffect),
+		FPVShakeEffect:   lookupHash(s.FPVShakeEffect),
+		InnerRadius:      s.InnerRadius,
+		OuterRadius:      s.OuterRadius,
+	}
+}
+
 type SimpleRPM struct {
 	Min     float32 `json:"min"`
 	Default float32 `json:"default"`
@@ -181,14 +191,8 @@ func (component ProjectileWeaponComponent) ToSimple(lookupHash HashLookup, looku
 			HeatBleedSpeed:   component.HeatBuildup.HeatBleedSpeed,
 			HeatBleedDelay:   component.HeatBuildup.HeatBleedDelay,
 		},
-		ScaleDownUsedFireNode: component.ScaleDownUsedFireNode != 0,
-		OnRoundFiredShakes: SimpleWeaponCameraShakeInfo{
-			WorldShakeEffect: lookupHash(component.OnRoundFiredShakes.WorldShakeEffect),
-			LocalShakeEffect: lookupHash(component.OnRoundFiredShakes.LocalShakeEffect),
-			FPVShakeEffect:   lookupHash(component.OnRoundFiredShakes.FPVShakeEffect),
-			InnerRadius:      component.OnRoundFiredShakes.InnerRadius,
-			OuterRadius:      component.OnRoundFiredShakes.OuterRadius,
-		},
+		ScaleDownUsedFireNode:  component.ScaleDownUsedFireNode != 0,
+		OnRoundFiredShakes:     component.OnRoundFiredShakes.ToSimple(lookupHash, lookupThinHash, lookupStrings),
 		NumLowAmmoRounds:       component.NumLowAmmoRounds,
 		LowAmmoAudioEvent:      lookupThinHash(component.LowAmmoAudioEvent),
 		LastBulletAudioEvent:   lookupThinHash(component.LastBulletAudioEvent),
