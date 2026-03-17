@@ -71628,6 +71628,7 @@ content/fac_helldivers/equipment/melee_weapons/survival_shovel/animation/folded
 content/fac_helldivers/equipment/melee_weapons/survival_shovel/animation/holster
 content/fac_helldivers/equipment/melee_weapons/survival_shovel/animation/idle
 content/fac_helldivers/equipment/melee_weapons/survival_shovel/survival_shovel
+content/fac_helldivers/equipment/melee_weapons/survival_shovel/survival_shovel_trench
 content/fac_helldivers/equipment/primary_weapons/arc_shotgun/animation/pump
 content/fac_helldivers/equipment/primary_weapons/arc_shotgun/arc_shotgun
 content/fac_helldivers/equipment/primary_weapons/arc_shotgun/textures/arc_shotgun_nac

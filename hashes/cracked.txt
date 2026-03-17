@@ -7257,3 +7257,4 @@ content/objectives/obj_illuminate/il_harvester/il_harvester
 content/objectives/obj_illuminate/il_harvester/il_harvester_hole_01
 content/objectives/obj_illuminate/il_destroy_weather_device/il_harvester_cables_01
 content/objectives/obj_illuminate/il_destroy_weather_device/il_weather_device_battery
+content/fac_helldivers/equipment/melee_weapons/survival_shovel/survival_shovel_trench
