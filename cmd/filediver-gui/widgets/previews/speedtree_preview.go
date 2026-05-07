@@ -2,10 +2,7 @@ package previews
 
 import (
 	"bytes"
-	"cmp"
 	"fmt"
-	"image"
-	"io"
 	"math"
 	"strings"
 
@@ -16,13 +13,9 @@ import (
 	"github.com/xypwn/filediver/cmd/filediver-gui/glutils"
 	"github.com/xypwn/filediver/cmd/filediver-gui/imutils"
 	"github.com/xypwn/filediver/cmd/filediver-gui/widgets"
-	datalib "github.com/xypwn/filediver/datalibrary"
-	"github.com/xypwn/filediver/dds"
 	"github.com/xypwn/filediver/stingray"
 	"github.com/xypwn/filediver/stingray/speedtree"
-	"github.com/xypwn/filediver/stingray/unit"
 	"github.com/xypwn/filediver/stingray/unit/material"
-	"github.com/xypwn/filediver/stingray/unit/texture"
 )
 
 type speedtreeMaterial struct {
@@ -47,10 +40,6 @@ type speedtreePreviewObject struct {
 	materials   []speedtreeMaterial
 }
 
-// NOTE(xypwn): We do at most ~10 lookups once per frame,
-// so it should be fine to store this in a string map.
-type speedtreePreviewUniforms map[string]int32
-
 func (obj *speedtreePreviewObject) genObjects() {
 	gl.GenVertexArrays(1, &obj.vao)
 	gl.GenBuffers(1, &obj.vbo)
@@ -74,24 +63,6 @@ func (obj *speedtreePreviewObject) genMaterials(count int) {
 	}
 }
 
-// Panicks if a name is not a uniform.
-func (uniforms *speedtreePreviewUniforms) generate(program uint32, names ...string) {
-	if *uniforms == nil {
-		*uniforms = speedtreePreviewUniforms{}
-	}
-	for _, name := range names {
-		cStr, free := gl.Strs(name + "\x00")
-		loc := gl.GetUniformLocation(program, *cStr)
-		free()
-
-		if loc == -1 {
-			panic(fmt.Sprintf("Invalid uniform name \"%v\" for program %v", name, program))
-		}
-
-		(*uniforms)[name] = loc
-	}
-}
-
 func (obj speedtreePreviewObject) deleteObjects() {
 	gl.DeleteVertexArrays(1, &obj.vao)
 	gl.DeleteBuffers(1, &obj.vbo)
@@ -107,17 +78,17 @@ type SpeedtreePreviewState struct {
 	fb *widgets.GLViewState
 
 	object                  speedtreePreviewObject
-	treeProgram             uint32
-	treeUniforms            speedtreePreviewUniforms
+	objectProgram           uint32
+	objectUniforms          modelPreviewUniforms
 	objectWireframeProgram  uint32
-	objectWireframeUniforms speedtreePreviewUniforms
+	objectWireframeUniforms modelPreviewUniforms
 
 	objectNormalVisProgram  uint32
-	objectNormalVisUniforms speedtreePreviewUniforms
+	objectNormalVisUniforms modelPreviewUniforms
 
 	dbgObjProgram  uint32
 	dbgObj         speedtreePreviewObject
-	dbgObjUniforms speedtreePreviewUniforms
+	dbgObjUniforms modelPreviewUniforms
 
 	vfov         float32
 	model        mgl32.Mat4
@@ -134,21 +105,7 @@ type SpeedtreePreviewState struct {
 	aabb    [2]mgl32.Vec3
 	aabbMat mgl32.Mat4
 
-	// // For fitting mesh to screen and debug info
-	// meshPositions [][3]float32
-	// meshNormals   [][3]float32
-
 	maxViewDistance float32
-
-	numUdims          uint32
-	udimsShownDefault [64]bool
-	udimsSelected     [64]bool  // udims persistently selected
-	udimsShown        [64]int32 // udims visually selected 1 (shown) or 0 (hidden)
-	udimNames         [64]string
-
-	// For dragging selection
-	activeUDimListItem  int32
-	hoveredUDimListItem int32
 
 	showWireframe             bool
 	wireframeColor            [4]float32
@@ -158,6 +115,44 @@ type SpeedtreePreviewState struct {
 	visualizeTangentBitangent int32 // 1 or 0
 	autoZoomEnabled           bool
 	doAutoZoomNextFrame       bool
+}
+
+func (pv *SpeedtreePreviewState) AnimTime() float32 {
+	return pv.animTime
+}
+func (pv *SpeedtreePreviewState) AnimOrigViewDistance() float32 {
+	return pv.animOrigViewDistance
+}
+func (pv *SpeedtreePreviewState) ViewDistance() float32 {
+	return pv.viewDistance
+}
+func (pv *SpeedtreePreviewState) AnimOrigViewRotation() mgl32.Vec2 {
+	return pv.animOrigViewRotation
+}
+func (pv *SpeedtreePreviewState) ViewRotation() mgl32.Vec2 {
+	return pv.viewRotation
+}
+func (pv *SpeedtreePreviewState) Model() mgl32.Mat4 {
+	return pv.model
+}
+func (pv *SpeedtreePreviewState) VFOV() float32 {
+	return pv.vfov
+}
+
+func (pv *SpeedtreePreviewState) SetViewDistance(viewDistance float32) {
+	pv.viewDistance = viewDistance
+}
+func (pv *SpeedtreePreviewState) MaxViewDistance() float32 {
+	return pv.maxViewDistance
+}
+func (pv *SpeedtreePreviewState) SetViewRotation(viewRotation mgl32.Vec2) {
+	pv.viewRotation = viewRotation
+}
+func (pv *SpeedtreePreviewState) AutoZoomEnabled() bool {
+	return pv.autoZoomEnabled
+}
+func (pv *SpeedtreePreviewState) SetDoAutoZoomNextFrame(doAutoZoomNextFrame bool) {
+	pv.doAutoZoomNextFrame = doAutoZoomNextFrame
 }
 
 func NewSpeedtreePreview() (*SpeedtreePreviewState, error) {
@@ -171,16 +166,16 @@ func NewSpeedtreePreview() (*SpeedtreePreviewState, error) {
 	}
 
 	pv.object.genObjects()
-	pv.treeProgram, err = glutils.CreateProgramFromSources(unitPreviewShaderCode,
+	pv.objectProgram, err = glutils.CreateProgramFromSources(modelPreviewShaderCode,
 		"shaders/speedtree.vert",
 		"shaders/speedtree.frag",
 	)
 	if err != nil {
 		return nil, err
 	}
-	pv.treeUniforms.generate(pv.treeProgram, "mvp", "model", "normalMat", "viewPosition", "texAlbedo", "texNormal", "opacityThreshold", "fibonacci_normal_lut")
+	pv.objectUniforms.generate(pv.objectProgram, "mvp", "model", "normalMat", "viewPosition", "texAlbedo", "texNormal", "opacityThreshold", "fibonacci_normal_lut")
 
-	pv.objectWireframeProgram, err = glutils.CreateProgramFromSources(unitPreviewShaderCode,
+	pv.objectWireframeProgram, err = glutils.CreateProgramFromSources(modelPreviewShaderCode,
 		"shaders/speedtree_wireframe.vert",
 		"shaders/object_wireframe.geom",
 		"shaders/object_wireframe.frag",
@@ -190,7 +185,7 @@ func NewSpeedtreePreview() (*SpeedtreePreviewState, error) {
 	}
 	pv.objectWireframeUniforms.generate(pv.objectWireframeProgram, "mvp", "color")
 
-	pv.objectNormalVisProgram, err = glutils.CreateProgramFromSources(unitPreviewShaderCode,
+	pv.objectNormalVisProgram, err = glutils.CreateProgramFromSources(modelPreviewShaderCode,
 		"shaders/speedtree_normal_vis.vert",
 		"shaders/object_normal_vis.geom",
 		"shaders/object_normal_vis.frag",
@@ -201,7 +196,7 @@ func NewSpeedtreePreview() (*SpeedtreePreviewState, error) {
 	pv.objectNormalVisUniforms.generate(pv.objectNormalVisProgram, "mvp", "len", "showTangentBitangent", "fibonacci_normal_lut")
 
 	pv.dbgObj.genObjects()
-	pv.dbgObjProgram, err = glutils.CreateProgramFromSources(unitPreviewShaderCode,
+	pv.dbgObjProgram, err = glutils.CreateProgramFromSources(modelPreviewShaderCode,
 		"shaders/debug_object.vert",
 		"shaders/debug_object.frag",
 	)
@@ -221,10 +216,10 @@ func NewSpeedtreePreview() (*SpeedtreePreviewState, error) {
 	}
 	setupLUT(pv.object.lutFibonacci)
 
-	gl.UseProgram(pv.treeProgram)
-	gl.Uniform1i(pv.treeUniforms["texAlbedo"], 0)
-	gl.Uniform1i(pv.treeUniforms["texNormal"], 1)
-	gl.Uniform1i(pv.treeUniforms["fibonacci_normal_lut"], 2)
+	gl.UseProgram(pv.objectProgram)
+	gl.Uniform1i(pv.objectUniforms["texAlbedo"], 0)
+	gl.Uniform1i(pv.objectUniforms["texNormal"], 1)
+	gl.Uniform1i(pv.objectUniforms["fibonacci_normal_lut"], 2)
 	gl.UseProgram(0)
 
 	gl.UseProgram(pv.objectNormalVisProgram)
@@ -242,39 +237,9 @@ func NewSpeedtreePreview() (*SpeedtreePreviewState, error) {
 
 func (pv *SpeedtreePreviewState) Delete() {
 	pv.fb.Delete()
-	gl.DeleteProgram(pv.treeProgram)
+	gl.DeleteProgram(pv.objectProgram)
 	pv.object.deleteObjects()
 	pv.dbgObj.deleteObjects()
-}
-
-func (pv *SpeedtreePreviewState) loadMesh(meshInfos []unit.MeshInfo, meshLayouts []unit.MeshLayout, gpuData []byte) (unit.Mesh, error) {
-	var meshToLoad uint32
-	{
-		highestDetailIdx := -1
-		highestDetailCount := -1
-		for i, info := range meshInfos {
-			for _, group := range info.Groups {
-				if int(group.NumIndices) > highestDetailCount && info.Header.MeshType != unit.MeshTypeUnknown00 {
-					highestDetailIdx = i
-					highestDetailCount = int(group.NumIndices)
-				}
-			}
-		}
-		if highestDetailIdx == -1 {
-			return unit.Mesh{}, fmt.Errorf("unable to find mesh to load")
-		}
-		meshToLoad = uint32(highestDetailIdx)
-	}
-
-	var mesh unit.Mesh
-	{
-		meshes, err := unit.LoadMeshes(bytes.NewReader(gpuData), meshInfos, meshLayouts, []uint32{meshToLoad})
-		if err != nil {
-			return unit.Mesh{}, err
-		}
-		mesh = meshes[meshToLoad]
-	}
-	return mesh, nil
 }
 
 func (pv *SpeedtreePreviewState) LoadSpeedtree(fileID stingray.Hash, mainData, gpuData []byte, getResource GetResourceFunc, thinhashes map[stingray.ThinHash]string) error {
@@ -373,7 +338,7 @@ func (pv *SpeedtreePreviewState) LoadSpeedtree(fileID stingray.Hash, mainData, g
 	{
 		gl.BindVertexArray(pv.dbgObj.vao)
 
-		verts := pv.getAABBVertices()
+		verts := getAABBVertices(pv.aabb)
 		gl.BindBuffer(gl.ARRAY_BUFFER, pv.dbgObj.vbo)
 		defer gl.BindBuffer(gl.ARRAY_BUFFER, 0)
 		gl.BufferData(gl.ARRAY_BUFFER, len(verts)*3*4, gl.Ptr(verts[:]), gl.STATIC_DRAW)
@@ -386,88 +351,6 @@ func (pv *SpeedtreePreviewState) LoadSpeedtree(fileID stingray.Hash, mainData, g
 		gl.EnableVertexAttribArray(0)
 
 		gl.BindVertexArray(0)
-	}
-
-	uploadStingrayTexture := func(textureID uint32, fileName stingray.Hash) error {
-		file := stingray.FileID{Name: fileName, Type: stingray.Sum("texture")}
-		var texMain, texStream, texGPU []byte
-		if texMain, _, err = getResource(file, stingray.DataMain); err != nil {
-			return fmt.Errorf("load texture %v.texture: %w", fileName, err)
-		}
-		texStream, _, _ = getResource(file, stingray.DataStream)
-		texGPU, _, _ = getResource(file, stingray.DataGPU)
-		dataR := io.MultiReader(
-			bytes.NewReader(texMain),
-			bytes.NewReader(texStream),
-			bytes.NewReader(texGPU),
-		)
-		if _, err := texture.DecodeInfo(dataR); err != nil {
-			return fmt.Errorf("loading stingray DDS info: %w", err)
-		}
-		dds, err := dds.Decode(dataR, false)
-		if err != nil {
-			return fmt.Errorf("loading DDS image: %w", err)
-		}
-		img, ok := dds.Image.(*image.NRGBA)
-		if !ok {
-			return fmt.Errorf("expected texture to be of type *image.NRGBA")
-		}
-		gl.BindTexture(gl.TEXTURE_2D, textureID)
-		gl.TexImage2D(gl.TEXTURE_2D, 0, gl.RGBA, int32(img.Bounds().Dx()), int32(img.Bounds().Dy()), 0, gl.RGBA, gl.UNSIGNED_BYTE, gl.Ptr(img.Pix))
-		gl.BindTexture(gl.TEXTURE_2D, 0)
-		return nil
-	}
-
-	uploadStingrayLUT := func(textureID uint32, fileName stingray.Hash) error {
-		file := stingray.FileID{Name: fileName, Type: stingray.Sum("texture")}
-		var texMain, texStream, texGPU []byte
-		if texMain, _, err = getResource(file, stingray.DataMain); err != nil {
-			return fmt.Errorf("load texture %v.texture: %w", fileName, err)
-		}
-		texStream, _, _ = getResource(file, stingray.DataStream)
-		texGPU, _, _ = getResource(file, stingray.DataGPU)
-		dataR := io.MultiReader(
-			bytes.NewReader(texMain),
-			bytes.NewReader(texStream),
-			bytes.NewReader(texGPU),
-		)
-		if _, err := texture.DecodeInfo(dataR); err != nil {
-			return fmt.Errorf("loading stingray DDS info: %w", err)
-		}
-		dds, err := dds.Decode(dataR, false)
-		if err != nil {
-			return fmt.Errorf("loading DDS image: %w", err)
-		}
-		gl.BindTexture(gl.TEXTURE_2D, textureID)
-		gl.TexImage2D(gl.TEXTURE_2D, 0, gl.RGBA32F, int32(dds.Image.Bounds().Dx()), int32(dds.Image.Bounds().Dy()), 0, gl.RGBA, gl.FLOAT, gl.Ptr(dds.Images[0].MipMaps[0].Raw))
-		gl.BindTexture(gl.TEXTURE_2D, 0)
-		return nil
-	}
-
-	setupTexture := func(textureID uint32) {
-		gl.BindTexture(gl.TEXTURE_2D, textureID)
-		gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.REPEAT)
-		gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.REPEAT)
-		gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR)
-		gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR)
-		gl.PixelStorei(gl.UNPACK_ROW_LENGTH, 0)
-		gl.BindTexture(gl.TEXTURE_2D, 0)
-	}
-
-	getTextureSlotPath := func(mat *material.Material, targetSlot stingray.ThinHash) stingray.Hash {
-		for texSlot, path := range mat.Textures {
-			if texSlot == targetSlot {
-				return path
-			}
-		}
-		return stingray.Hash{Value: 0x0}
-	}
-
-	uploadMissingTexture := func(textureID uint32, color []byte) error {
-		gl.BindTexture(gl.TEXTURE_2D, textureID)
-		gl.TexImage2D(gl.TEXTURE_2D, 0, gl.RGBA, 1, 1, 0, gl.RGBA, gl.UNSIGNED_BYTE, gl.Ptr(color))
-		gl.BindTexture(gl.TEXTURE_2D, 0)
-		return nil
 	}
 
 	// Load materials
@@ -510,7 +393,7 @@ func (pv *SpeedtreePreviewState) LoadSpeedtree(fileID stingray.Hash, mainData, g
 			if albedoOpacityHash.Value == 0x0 {
 				err = uploadMissingTexture(pv.object.materials[materialIndex].texAlbedoOpacity, []byte{255, 255, 255, 255})
 			} else {
-				err = uploadStingrayTexture(pv.object.materials[materialIndex].texAlbedoOpacity, albedoOpacityHash)
+				err = uploadStingrayTexture(pv.object.materials[materialIndex].texAlbedoOpacity, albedoOpacityHash, getResource)
 			}
 			if err != nil {
 				return fmt.Errorf("load tex0 %v.texture: %w", albedoOpacityHash, err)
@@ -520,7 +403,7 @@ func (pv *SpeedtreePreviewState) LoadSpeedtree(fileID stingray.Hash, mainData, g
 			if normalHash.Value == 0x0 {
 				err = uploadMissingTexture(pv.object.materials[materialIndex].texNormalRG, []byte{128, 128, 255, 255})
 			} else {
-				err = uploadStingrayTexture(pv.object.materials[materialIndex].texNormalRG, normalHash)
+				err = uploadStingrayTexture(pv.object.materials[materialIndex].texNormalRG, normalHash, getResource)
 			}
 			if err != nil {
 				return fmt.Errorf("load tex1 %v.texture: %w", normalHash, err)
@@ -535,7 +418,7 @@ func (pv *SpeedtreePreviewState) LoadSpeedtree(fileID stingray.Hash, mainData, g
 
 	// Load fibonacci lut
 	{
-		err = uploadStingrayLUT(pv.object.lutFibonacci, stingray.Sum("content/art_shared/textures/fibonacci_normal_lut"))
+		err = uploadStingrayLUT(pv.object.lutFibonacci, stingray.Sum("content/art_shared/textures/fibonacci_normal_lut"), getResource)
 		if err != nil {
 			return fmt.Errorf("upload fibonacci normal lut: %w", err)
 		}
@@ -551,7 +434,7 @@ func (pv *SpeedtreePreviewState) LoadSpeedtree(fileID stingray.Hash, mainData, g
 	{
 		// Get origin sphere around mesh
 		var maxDistSqrFromOrigin float32
-		for _, p := range pv.getAABBVertices() {
+		for _, p := range getAABBVertices(pv.aabb) {
 			maxDistSqrFromOrigin = max(maxDistSqrFromOrigin,
 				mgl32.Vec3(p).LenSqr())
 		}
@@ -568,83 +451,7 @@ func (pv *SpeedtreePreviewState) LoadSpeedtree(fileID stingray.Hash, mainData, g
 		pv.maxViewDistance *= 2
 	}
 
-	for i := range pv.udimsShownDefault {
-		pv.udimsShownDefault[i] = true
-		pv.udimNames[i] = ""
-	}
-	visibilityMasks, err := datalib.ParseVisibilityMasks()
-	if err != nil {
-		return err
-	}
-	if visibilityMask, ok := visibilityMasks[fileID]; ok {
-		for _, info := range visibilityMask.MaskInfos {
-			if int(info.Index) >= len(pv.udimsShownDefault) {
-				// No support for udims with index > 64 at the moment
-				continue
-			}
-			pv.udimsShownDefault[info.Index] = info.StartHidden == 0
-			name, ok := thinhashes[info.Name]
-			if !ok {
-				name = info.Name.String()
-			}
-			pv.udimNames[info.Index] = name
-		}
-	}
-	pv.udimsSelected = pv.udimsShownDefault
-
 	return nil
-}
-
-func (pv *SpeedtreePreviewState) computeMVP(aspectRatio float32, animate bool) (
-	normal mgl32.Mat3,
-	viewPosition mgl32.Vec3,
-	view mgl32.Mat4,
-	projection mgl32.Mat4,
-) {
-	var viewDistance float32
-	var viewRotation mgl32.Vec2
-
-	if animate && pv.animTime >= 0 && pv.animTime <= 1 {
-		// Animate -> lerp original to current by animTime
-		viewDistance = pv.animOrigViewDistance*(1-pv.animTime) + pv.viewDistance*pv.animTime
-		viewRotation = pv.animOrigViewRotation.Mul(1 - pv.animTime).Add(pv.viewRotation.Mul(pv.animTime))
-	} else {
-		viewDistance = pv.viewDistance
-		viewRotation = pv.viewRotation
-	}
-
-	normal = pv.model.Inv().Transpose().Mat3()
-	{
-		mat := mgl32.Ident3()
-		mat = mat.Mul3(mgl32.Rotate3DY(viewRotation[0]))
-		mat = mat.Mul3(mgl32.Rotate3DX(viewRotation[1]))
-		viewPosition = mat.Mul3x1(mgl32.Vec3{0, 0, viewDistance})
-	}
-	view = mgl32.LookAt(
-		viewPosition[0], viewPosition[1], viewPosition[2],
-		0, 0, 0,
-		0, 1, 0,
-	)
-	projection = mgl32.Perspective(
-		pv.vfov,
-		aspectRatio,
-		0.001,
-		32768,
-	)
-	return
-}
-
-func (pv *SpeedtreePreviewState) getAABBVertices() [8]mgl32.Vec3 {
-	return [8]mgl32.Vec3{
-		{pv.aabb[0][0], pv.aabb[0][1], pv.aabb[0][2]},
-		{pv.aabb[0][0], pv.aabb[0][1], pv.aabb[1][2]},
-		{pv.aabb[0][0], pv.aabb[1][1], pv.aabb[0][2]},
-		{pv.aabb[0][0], pv.aabb[1][1], pv.aabb[1][2]},
-		{pv.aabb[1][0], pv.aabb[0][1], pv.aabb[0][2]},
-		{pv.aabb[1][0], pv.aabb[0][1], pv.aabb[1][2]},
-		{pv.aabb[1][0], pv.aabb[1][1], pv.aabb[0][2]},
-		{pv.aabb[1][0], pv.aabb[1][1], pv.aabb[1][2]},
-	}
 }
 
 func SpeedtreePreview(name string, pv *SpeedtreePreviewState) {
@@ -655,7 +462,6 @@ func SpeedtreePreview(name string, pv *SpeedtreePreviewState) {
 	imgui.PushIDStr(name)
 	defer imgui.PopID()
 
-	viewPos := imgui.CursorScreenPos()
 	viewSize := imgui.ContentRegionAvail()
 	viewSize.Y -= imutils.CheckboxHeight()
 
@@ -666,57 +472,34 @@ func SpeedtreePreview(name string, pv *SpeedtreePreviewState) {
 	}
 
 	widgets.GLView(name, pv.fb, viewSize,
-		func() {
-			io := imgui.CurrentIO()
-
-			if imgui.IsItemActive() {
-				md := io.MouseDelta()
-				pv.viewRotation = pv.viewRotation.Add(mgl32.Vec2{md.X, md.Y}.Mul(-0.01))
-				pv.viewRotation[1] = mgl32.Clamp(pv.viewRotation[1], -1.55, 1.55)
-			}
-			if imgui.IsItemDeactivated() && pv.autoZoomEnabled {
-				pv.doAutoZoomNextFrame = true
-			}
-			if imgui.IsItemHovered() {
-				scroll := io.MouseWheel()
-				pv.viewDistance -= 0.1 * pv.viewDistance * scroll
-				if scroll != 0 {
-					pv.autoZoomEnabled = false
-				}
-			}
-			pv.viewDistance = mgl32.Clamp(
-				pv.viewDistance,
-				0.001,
-				pv.maxViewDistance,
-			)
-		},
+		getModelPreviewProcessInputFunction(pv),
 		func(pos, size imgui.Vec2) {
 			gl.ClearColor(0.2, 0.2, 0.2, 1)
 			gl.Clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT)
 
-			normal, viewPosition, view, projection := pv.computeMVP(size.X/size.Y, true)
+			normal, viewPosition, view, projection := computeMVP(pv, size.X/size.Y, true)
 			mvp := projection.Mul4(view).Mul4(pv.model)
 
 			// Draw object
 			gl.Enable(gl.DEPTH_TEST)
 			if !pv.showWireframe {
-				gl.UseProgram(pv.treeProgram)
+				gl.UseProgram(pv.objectProgram)
 			} else {
 				gl.UseProgram(pv.objectWireframeProgram)
 			}
 			gl.BindVertexArray(pv.object.vao)
 			if !pv.showWireframe {
-				gl.UniformMatrix4fv(pv.treeUniforms["mvp"], 1, false, &mvp[0])
-				gl.UniformMatrix4fv(pv.treeUniforms["model"], 1, false, &pv.model[0])
-				gl.UniformMatrix3fv(pv.treeUniforms["normalMat"], 1, false, &normal[0])
-				gl.Uniform3fv(pv.treeUniforms["viewPosition"], 1, &viewPosition[0])
+				gl.UniformMatrix4fv(pv.objectUniforms["mvp"], 1, false, &mvp[0])
+				gl.UniformMatrix4fv(pv.objectUniforms["model"], 1, false, &pv.model[0])
+				gl.UniformMatrix3fv(pv.objectUniforms["normalMat"], 1, false, &normal[0])
+				gl.Uniform3fv(pv.objectUniforms["viewPosition"], 1, &viewPosition[0])
 			} else {
 				gl.UniformMatrix4fv(pv.objectWireframeUniforms["mvp"], 1, false, &mvp[0])
 				gl.Uniform4fv(pv.objectWireframeUniforms["color"], 1, &pv.wireframeColor[0])
 			}
 			for idx := range pv.object.materials {
 				if !pv.showWireframe {
-					gl.Uniform1f(pv.treeUniforms["opacityThreshold"], pv.object.materials[idx].opacityThreshold)
+					gl.Uniform1f(pv.objectUniforms["opacityThreshold"], pv.object.materials[idx].opacityThreshold)
 					gl.ActiveTexture(gl.TEXTURE0)
 					gl.BindTexture(gl.TEXTURE_2D, pv.object.materials[idx].texAlbedoOpacity)
 					gl.ActiveTexture(gl.TEXTURE1)
@@ -764,7 +547,7 @@ func SpeedtreePreview(name string, pv *SpeedtreePreviewState) {
 			if pv.doAutoZoomNextFrame {
 				pv.viewDistance = pv.maxViewDistance
 
-				_, viewPosition, view, projection := pv.computeMVP(size.X/size.Y, false)
+				_, viewPosition, view, projection := computeMVP(pv, size.X/size.Y, false)
 
 				fitVertexCamDistDelta := func(vertex mgl32.Vec3) float32 {
 					v := vertex.Vec4(1.0)
@@ -794,7 +577,7 @@ func SpeedtreePreview(name string, pv *SpeedtreePreviewState) {
 				}
 
 				maxCamDistDelta := float32(-math.MaxFloat32)
-				for _, vert := range pv.getAABBVertices() {
+				for _, vert := range getAABBVertices(pv.aabb) {
 					maxCamDistDelta = max(maxCamDistDelta,
 						fitVertexCamDistDelta(vert))
 				}
@@ -988,103 +771,6 @@ func SpeedtreePreview(name string, pv *SpeedtreePreviewState) {
 		pv.doAutoZoomNextFrame = true
 	}
 	imgui.SameLine()
-	// UDim selection
-	nextActiveUDimListItem := int32(-1)
-	nextHoveredUDimListItem := int32(-1)
-	imgui.BeginDisabledV(pv.numUdims <= 1)
-	if imgui.Button("UDims Selection") {
-		imgui.OpenPopupStr("UDims")
-		imgui.SetNextWindowPos(viewPos.Sub(imutils.SVec2(240, 0)))
-		imgui.SetNextWindowSize(imgui.NewVec2(imutils.S(240), viewSize.Y))
-	}
-	if pv.numUdims <= 1 {
-		imgui.SetItemTooltip("Mesh has no UDims")
-	}
-	imgui.EndDisabled()
-	if imgui.InternalBeginPopupEx(imgui.IDStr("UDims"), imgui.WindowFlagsNoTitleBar|imgui.WindowFlagsNoSavedSettings) {
-		if imgui.Button("Reset") {
-			pv.udimsSelected = pv.udimsShownDefault
-		}
-		imgui.Separator()
-		imgui.PushStyleVarVec2(imgui.StyleVarItemSpacing,
-			imgui.NewVec2(imgui.CurrentStyle().ItemSpacing().X, 0))
-		dragging := pv.activeUDimListItem != -1 && pv.hoveredUDimListItem != -1
-		var draggingMin, draggingMax int32
-		if dragging {
-			draggingMin = min(pv.activeUDimListItem, pv.hoveredUDimListItem)
-			draggingMax = max(pv.activeUDimListItem, pv.hoveredUDimListItem)
-		}
-		var draggingMinPos, draggingMaxPos imgui.Vec2
-		for i := range int32(pv.numUdims) {
-			selected := pv.udimsSelected[i]
-			if dragging {
-				if i >= draggingMin && i <= draggingMax {
-					selected = !selected
-				}
-				if imgui.IsMouseClickedBool(imgui.MouseButtonRight) {
-					imgui.CurrentContext().SetActiveId(0)
-				}
-			}
-			if selected {
-				pv.udimsShown[i] = 1
-			} else {
-				pv.udimsShown[i] = 0
-			}
-			if imgui.IsMouseReleased(imgui.MouseButtonLeft) {
-				pv.udimsSelected[i] = selected
-			}
-			var icon string
-			if selected {
-				icon = fnt.I.Visibility
-			} else {
-				icon = fnt.I.VisibilityOff
-			}
-			imgui.PushIDInt(i)
-			pos := imgui.CursorScreenPos()
-			size := imgui.NewVec2(imgui.ContentRegionAvail().X, imgui.FontSize())
-			if dragging {
-				if i == draggingMin {
-					draggingMinPos = pos
-				}
-				if i == draggingMax {
-					draggingMaxPos = pos.Add(size)
-				}
-			}
-			if selected {
-				imgui.WindowDrawList().AddRectFilled(pos, pos.Add(size), imgui.ColorU32Col(imgui.ColButton))
-			}
-			imutils.Textf(fmt.Sprintf("%s %02d: %s", icon, i, cmp.Or(pv.udimNames[i], "unknown")))
-			imgui.SetCursorScreenPos(pos)
-			imgui.SetNextItemAllowOverlap()
-			imgui.InvisibleButton("btn", size)
-			if imgui.IsItemActive() {
-				nextActiveUDimListItem = i
-			}
-			hovered := imgui.ItemStatusFlags(imgui.CurrentContext().LastItemData().CData.StatusFlags)&imgui.ItemStatusFlagsHoveredRect != 0
-			if hovered {
-				nextHoveredUDimListItem = i
-			}
-			imgui.SetItemTooltip(`Click to toggle item visibility
-Drag to toggle multiple items (right-click to cancel)`)
-			imgui.PopID()
-		}
-		imgui.PopStyleVar()
-		if dragging {
-			imgui.WindowDrawList().AddRectV(draggingMinPos, draggingMaxPos, imgui.ColorU32Col(imgui.ColButtonActive), 0, 0, 2)
-		}
-		imgui.EndPopup()
-	} else {
-		for i := range pv.udimsShown {
-			if pv.udimsSelected[i] {
-				pv.udimsShown[i] = 1
-			} else {
-				pv.udimsShown[i] = 0
-			}
-		}
-	}
-	pv.activeUDimListItem = nextActiveUDimListItem
-	pv.hoveredUDimListItem = nextHoveredUDimListItem
-
 	if pv.animTime != -1 {
 		pv.animTime += 5 * imgui.CurrentIO().DeltaTime()
 	}

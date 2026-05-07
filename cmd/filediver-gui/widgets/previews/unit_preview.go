@@ -3,11 +3,8 @@ package previews
 import (
 	"bytes"
 	"cmp"
-	"embed"
 	"errors"
 	"fmt"
-	"image"
-	"io"
 	"math"
 	"slices"
 	"strings"
@@ -20,23 +17,10 @@ import (
 	"github.com/xypwn/filediver/cmd/filediver-gui/imutils"
 	"github.com/xypwn/filediver/cmd/filediver-gui/widgets"
 	datalib "github.com/xypwn/filediver/datalibrary"
-	"github.com/xypwn/filediver/dds"
 	"github.com/xypwn/filediver/stingray"
 	"github.com/xypwn/filediver/stingray/unit"
 	geometrygroup "github.com/xypwn/filediver/stingray/unit/geometry_group"
 	"github.com/xypwn/filediver/stingray/unit/material"
-	"github.com/xypwn/filediver/stingray/unit/texture"
-)
-
-//go:embed shaders/*
-var unitPreviewShaderCode embed.FS
-
-// stingray coords to OpenGL coords
-var stingrayToGLCoords = mgl32.Mat4FromRows(
-	mgl32.Vec4{1, 0, 0, 0},
-	mgl32.Vec4{0, 0, 1, 0},
-	mgl32.Vec4{0, -1, 0, 0},
-	mgl32.Vec4{0, 0, 0, 1},
 )
 
 type unitPreviewObject struct {
@@ -49,10 +33,6 @@ type unitPreviewObject struct {
 	numVertices int32
 	numIndices  int32
 }
-
-// NOTE(xypwn): We do at most ~10 lookups once per frame,
-// so it should be fine to store this in a string map.
-type unitPreviewUniforms map[string]int32
 
 func (obj *unitPreviewObject) genObjects(textures bool) {
 	gl.GenVertexArrays(1, &obj.vao)
@@ -72,24 +52,6 @@ func (obj *unitPreviewObject) genObjects(textures bool) {
 	gl.BindBuffer(gl.ELEMENT_ARRAY_BUFFER, obj.ibo)
 }
 
-// Panicks if a name is not a uniform.
-func (uniforms *unitPreviewUniforms) generate(program uint32, names ...string) {
-	if *uniforms == nil {
-		*uniforms = unitPreviewUniforms{}
-	}
-	for _, name := range names {
-		cStr, free := gl.Strs(name + "\x00")
-		loc := gl.GetUniformLocation(program, *cStr)
-		free()
-
-		if loc == -1 {
-			panic(fmt.Sprintf("Invalid uniform name \"%v\" for program %v", name, program))
-		}
-
-		(*uniforms)[name] = loc
-	}
-}
-
 func (obj unitPreviewObject) deleteObjects() {
 	gl.DeleteVertexArrays(1, &obj.vao)
 	gl.DeleteBuffers(1, &obj.vbo)
@@ -103,16 +65,16 @@ type UnitPreviewState struct {
 
 	object                  unitPreviewObject
 	objectProgram           uint32
-	objectUniforms          unitPreviewUniforms
+	objectUniforms          modelPreviewUniforms
 	objectWireframeProgram  uint32
-	objectWireframeUniforms unitPreviewUniforms
+	objectWireframeUniforms modelPreviewUniforms
 
 	objectNormalVisProgram  uint32
-	objectNormalVisUniforms unitPreviewUniforms
+	objectNormalVisUniforms modelPreviewUniforms
 
 	dbgObjProgram  uint32
 	dbgObj         unitPreviewObject
-	dbgObjUniforms unitPreviewUniforms
+	dbgObjUniforms modelPreviewUniforms
 
 	vfov         float32
 	model        mgl32.Mat4
@@ -155,6 +117,43 @@ type UnitPreviewState struct {
 	doAutoZoomNextFrame       bool
 }
 
+func (pv *UnitPreviewState) AnimTime() float32 {
+	return pv.animTime
+}
+func (pv *UnitPreviewState) AnimOrigViewDistance() float32 {
+	return pv.animOrigViewDistance
+}
+func (pv *UnitPreviewState) ViewDistance() float32 {
+	return pv.viewDistance
+}
+func (pv *UnitPreviewState) AnimOrigViewRotation() mgl32.Vec2 {
+	return pv.animOrigViewRotation
+}
+func (pv *UnitPreviewState) ViewRotation() mgl32.Vec2 {
+	return pv.viewRotation
+}
+func (pv *UnitPreviewState) Model() mgl32.Mat4 {
+	return pv.model
+}
+func (pv *UnitPreviewState) VFOV() float32 {
+	return pv.vfov
+}
+func (pv *UnitPreviewState) SetViewDistance(viewDistance float32) {
+	pv.viewDistance = viewDistance
+}
+func (pv *UnitPreviewState) MaxViewDistance() float32 {
+	return pv.maxViewDistance
+}
+func (pv *UnitPreviewState) SetViewRotation(viewRotation mgl32.Vec2) {
+	pv.viewRotation = viewRotation
+}
+func (pv *UnitPreviewState) AutoZoomEnabled() bool {
+	return pv.autoZoomEnabled
+}
+func (pv *UnitPreviewState) SetDoAutoZoomNextFrame(doAutoZoomNextFrame bool) {
+	pv.doAutoZoomNextFrame = doAutoZoomNextFrame
+}
+
 func NewUnitPreview() (*UnitPreviewState, error) {
 	var err error
 
@@ -166,7 +165,7 @@ func NewUnitPreview() (*UnitPreviewState, error) {
 	}
 
 	pv.object.genObjects(true)
-	pv.objectProgram, err = glutils.CreateProgramFromSources(unitPreviewShaderCode,
+	pv.objectProgram, err = glutils.CreateProgramFromSources(modelPreviewShaderCode,
 		"shaders/object.vert",
 		"shaders/object.frag",
 	)
@@ -175,7 +174,7 @@ func NewUnitPreview() (*UnitPreviewState, error) {
 	}
 	pv.objectUniforms.generate(pv.objectProgram, "mvp", "model", "normalMat", "viewPosition", "texAlbedo", "texNormal", "shouldReconstructNormalZ", "udimShown")
 
-	pv.objectWireframeProgram, err = glutils.CreateProgramFromSources(unitPreviewShaderCode,
+	pv.objectWireframeProgram, err = glutils.CreateProgramFromSources(modelPreviewShaderCode,
 		"shaders/object_wireframe.vert",
 		"shaders/object_wireframe.geom",
 		"shaders/object_wireframe.frag",
@@ -185,7 +184,7 @@ func NewUnitPreview() (*UnitPreviewState, error) {
 	}
 	pv.objectWireframeUniforms.generate(pv.objectWireframeProgram, "mvp", "color", "udimShown")
 
-	pv.objectNormalVisProgram, err = glutils.CreateProgramFromSources(unitPreviewShaderCode,
+	pv.objectNormalVisProgram, err = glutils.CreateProgramFromSources(modelPreviewShaderCode,
 		"shaders/object_normal_vis.vert",
 		"shaders/object_normal_vis.geom",
 		"shaders/object_normal_vis.frag",
@@ -196,7 +195,7 @@ func NewUnitPreview() (*UnitPreviewState, error) {
 	pv.objectNormalVisUniforms.generate(pv.objectNormalVisProgram, "mvp", "len", "showTangentBitangent", "udimShown")
 
 	pv.dbgObj.genObjects(false)
-	pv.dbgObjProgram, err = glutils.CreateProgramFromSources(unitPreviewShaderCode,
+	pv.dbgObjProgram, err = glutils.CreateProgramFromSources(modelPreviewShaderCode,
 		"shaders/debug_object.vert",
 		"shaders/debug_object.frag",
 	)
@@ -395,38 +394,9 @@ func (pv *UnitPreviewState) LoadUnit(fileID stingray.Hash, mainData, gpuData []b
 	if err != nil {
 		return err
 	}
-	uploadStingrayTexture := func(textureID uint32, fileName stingray.Hash) error {
-		file := stingray.FileID{Name: fileName, Type: stingray.Sum("texture")}
-		var texMain, texStream, texGPU []byte
-		if texMain, _, err = getResource(file, stingray.DataMain); err != nil {
-			return fmt.Errorf("load texture %v.texture: %w", fileName, err)
-		}
-		texStream, _, _ = getResource(file, stingray.DataStream)
-		texGPU, _, _ = getResource(file, stingray.DataGPU)
-		dataR := io.MultiReader(
-			bytes.NewReader(texMain),
-			bytes.NewReader(texStream),
-			bytes.NewReader(texGPU),
-		)
-		if _, err := texture.DecodeInfo(dataR); err != nil {
-			return fmt.Errorf("loading stingray DDS info: %w", err)
-		}
-		dds, err := dds.Decode(dataR, false)
-		if err != nil {
-			return fmt.Errorf("loading DDS image: %w", err)
-		}
-		img, ok := dds.Image.(*image.NRGBA)
-		if !ok {
-			return fmt.Errorf("expected texture to be of type *image.NRGBA")
-		}
-		gl.BindTexture(gl.TEXTURE_2D, textureID)
-		gl.TexImage2D(gl.TEXTURE_2D, 0, gl.RGBA, int32(img.Bounds().Dx()), int32(img.Bounds().Dy()), 0, gl.RGBA, gl.UNSIGNED_BYTE, gl.Ptr(img.Pix))
-		gl.BindTexture(gl.TEXTURE_2D, 0)
-		return nil
-	}
 
 	if albedoTexFileName.Value != 0 {
-		if err := uploadStingrayTexture(pv.object.texAlbedo, albedoTexFileName); err != nil {
+		if err := uploadStingrayTexture(pv.object.texAlbedo, albedoTexFileName, getResource); err != nil {
 			return err
 		}
 		if albedoRemoveAlpha {
@@ -435,21 +405,15 @@ func (pv *UnitPreviewState) LoadUnit(fileID stingray.Hash, mainData, gpuData []b
 			gl.BindTexture(gl.TEXTURE_2D, 0)
 		}
 	} else {
-		data := []byte{255, 255, 255, 255}
-		gl.BindTexture(gl.TEXTURE_2D, pv.object.texAlbedo)
-		gl.TexImage2D(gl.TEXTURE_2D, 0, gl.RGBA, 1, 1, 0, gl.RGBA, gl.UNSIGNED_BYTE, gl.Ptr(data))
-		gl.BindTexture(gl.TEXTURE_2D, 0)
+		uploadMissingTexture(pv.object.texAlbedo, []byte{255, 255, 255, 255})
 	}
 	if normalTexFileName.Value != 0 {
-		if err := uploadStingrayTexture(pv.object.texNormal, normalTexFileName); err != nil {
+		if err := uploadStingrayTexture(pv.object.texNormal, normalTexFileName, getResource); err != nil {
 			return err
 		}
 	} else {
-		data := []byte{128, 128, 255, 128}
-		gl.BindTexture(gl.TEXTURE_2D, pv.object.texNormal)
-		gl.TexImage2D(gl.TEXTURE_2D, 0, gl.RGBA, 1, 1, 0, gl.RGBA, gl.UNSIGNED_BYTE, gl.Ptr(data))
-		gl.BindTexture(gl.TEXTURE_2D, 0)
 		reconstructNormalZ = false
+		uploadMissingTexture(pv.object.texNormal, []byte{128, 128, 255, 128})
 	}
 
 	gl.UseProgram(pv.objectProgram)
@@ -541,7 +505,7 @@ func (pv *UnitPreviewState) LoadUnit(fileID stingray.Hash, mainData, gpuData []b
 	{
 		gl.BindVertexArray(pv.dbgObj.vao)
 
-		verts := pv.getAABBVertices()
+		verts := getAABBVertices(pv.aabb)
 		gl.BindBuffer(gl.ARRAY_BUFFER, pv.dbgObj.vbo)
 		defer gl.BindBuffer(gl.ARRAY_BUFFER, 0)
 		gl.BufferData(gl.ARRAY_BUFFER, len(verts)*3*4, gl.Ptr(verts[:]), gl.STATIC_DRAW)
@@ -610,73 +574,6 @@ func (pv *UnitPreviewState) LoadUnit(fileID stingray.Hash, mainData, gpuData []b
 	return nil
 }
 
-func (pv *UnitPreviewState) computeMVP(aspectRatio float32, animate bool) (
-	normal mgl32.Mat3,
-	viewPosition mgl32.Vec3,
-	view mgl32.Mat4,
-	projection mgl32.Mat4,
-) {
-	var viewDistance float32
-	var viewRotation mgl32.Vec2
-
-	if animate && pv.animTime >= 0 && pv.animTime <= 1 {
-		// Animate -> lerp original to current by animTime
-		viewDistance = pv.animOrigViewDistance*(1-pv.animTime) + pv.viewDistance*pv.animTime
-		viewRotation = pv.animOrigViewRotation.Mul(1 - pv.animTime).Add(pv.viewRotation.Mul(pv.animTime))
-	} else {
-		viewDistance = pv.viewDistance
-		viewRotation = pv.viewRotation
-	}
-
-	normal = pv.model.Inv().Transpose().Mat3()
-	{
-		mat := mgl32.Ident3()
-		mat = mat.Mul3(mgl32.Rotate3DY(viewRotation[0]))
-		mat = mat.Mul3(mgl32.Rotate3DX(viewRotation[1]))
-		viewPosition = mat.Mul3x1(mgl32.Vec3{0, 0, viewDistance})
-	}
-	view = mgl32.LookAt(
-		viewPosition[0], viewPosition[1], viewPosition[2],
-		0, 0, 0,
-		0, 1, 0,
-	)
-	projection = mgl32.Perspective(
-		pv.vfov,
-		aspectRatio,
-		0.001,
-		32768,
-	)
-	return
-}
-
-var aabbIndices = [12 * 3]uint32{
-	1, 2, 0,
-	1, 3, 2,
-	0, 6, 4,
-	0, 2, 6,
-	4, 7, 5,
-	4, 6, 7,
-	5, 3, 1,
-	5, 7, 3,
-	2, 3, 7,
-	2, 7, 6,
-	0, 4, 5,
-	0, 5, 1,
-}
-
-func (pv *UnitPreviewState) getAABBVertices() [8]mgl32.Vec3 {
-	return [8]mgl32.Vec3{
-		{pv.aabb[0][0], pv.aabb[0][1], pv.aabb[0][2]},
-		{pv.aabb[0][0], pv.aabb[0][1], pv.aabb[1][2]},
-		{pv.aabb[0][0], pv.aabb[1][1], pv.aabb[0][2]},
-		{pv.aabb[0][0], pv.aabb[1][1], pv.aabb[1][2]},
-		{pv.aabb[1][0], pv.aabb[0][1], pv.aabb[0][2]},
-		{pv.aabb[1][0], pv.aabb[0][1], pv.aabb[1][2]},
-		{pv.aabb[1][0], pv.aabb[1][1], pv.aabb[0][2]},
-		{pv.aabb[1][0], pv.aabb[1][1], pv.aabb[1][2]},
-	}
-}
-
 func UnitPreview(name string, pv *UnitPreviewState) {
 	if pv.object.numIndices == 0 {
 		return
@@ -696,35 +593,12 @@ func UnitPreview(name string, pv *UnitPreviewState) {
 	}
 
 	widgets.GLView(name, pv.fb, viewSize,
-		func() {
-			io := imgui.CurrentIO()
-
-			if imgui.IsItemActive() {
-				md := io.MouseDelta()
-				pv.viewRotation = pv.viewRotation.Add(mgl32.Vec2{md.X, md.Y}.Mul(-0.01))
-				pv.viewRotation[1] = mgl32.Clamp(pv.viewRotation[1], -1.55, 1.55)
-			}
-			if imgui.IsItemDeactivated() && pv.autoZoomEnabled {
-				pv.doAutoZoomNextFrame = true
-			}
-			if imgui.IsItemHovered() {
-				scroll := io.MouseWheel()
-				pv.viewDistance -= 0.1 * pv.viewDistance * scroll
-				if scroll != 0 {
-					pv.autoZoomEnabled = false
-				}
-			}
-			pv.viewDistance = mgl32.Clamp(
-				pv.viewDistance,
-				0.001,
-				pv.maxViewDistance,
-			)
-		},
+		getModelPreviewProcessInputFunction(pv),
 		func(pos, size imgui.Vec2) {
 			gl.ClearColor(0.2, 0.2, 0.2, 1)
 			gl.Clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT)
 
-			normal, viewPosition, view, projection := pv.computeMVP(size.X/size.Y, true)
+			normal, viewPosition, view, projection := computeMVP(pv, size.X/size.Y, true)
 			mvp := projection.Mul4(view).Mul4(pv.model)
 
 			// Draw object
@@ -788,7 +662,7 @@ func UnitPreview(name string, pv *UnitPreviewState) {
 			if pv.doAutoZoomNextFrame {
 				pv.viewDistance = pv.maxViewDistance
 
-				_, viewPosition, view, projection := pv.computeMVP(size.X/size.Y, false)
+				_, viewPosition, view, projection := computeMVP(pv, size.X/size.Y, false)
 
 				fitVertexCamDistDelta := func(vertex mgl32.Vec3) float32 {
 					v := vertex.Vec4(1.0)
@@ -914,7 +788,7 @@ func UnitPreview(name string, pv *UnitPreviewState) {
 
 			}
 
-			_, _, view, projection := pv.computeMVP(size.X/size.Y, false)
+			_, _, view, projection := computeMVP(pv, size.X/size.Y, false)
 			mvp := projection.Mul4(view).Mul4(pv.model)
 
 			// Show hovered vertex info
