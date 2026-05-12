@@ -9,7 +9,18 @@ in vec4 bitangentEndPosition[];
 
 out vec4 lineColor;
 
-uniform bool showTangentBitangent;
+layout(shared) uniform FilediverBlock {
+    mat4 mvp; // projection*view*model
+    mat4 model;
+    mat3 normalMat; // normal matrix = transpose(inverse(model))
+    vec3 viewPosition;
+    vec4 color;
+    float opacityThreshold;
+    float len;
+    bool shouldReconstructNormalZ;
+    bool showTangentBitangent;
+    bool udimShown[64];
+};
 
 void drawLine(vec4 endPosition) {
     gl_Position = gl_in[0].gl_Position;

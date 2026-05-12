@@ -10,9 +10,18 @@ out vec4 normalEndPosition;
 out vec4 tangentEndPosition;
 out vec4 bitangentEndPosition;
 
-uniform mat4 mvp; // projection*view*model
-uniform float len; // normal length
-uniform bool udimShown[64];
+layout(shared) uniform FilediverBlock {
+    mat4 mvp; // projection*view*model
+    mat4 model;
+    mat3 normalMat; // normal matrix = transpose(inverse(model))
+    vec3 viewPosition;
+    vec4 color;
+    float opacityThreshold;
+    float len;
+    bool shouldReconstructNormalZ;
+    bool showTangentBitangent;
+    bool udimShown[64];
+};
 
 bool isShown() {
     int udim = int(inUV.x) | int(1-inUV.y)<<5;

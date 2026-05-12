@@ -63,6 +63,8 @@ func (obj unitPreviewObject) deleteObjects() {
 type UnitPreviewState struct {
 	fb *widgets.GLViewState
 
+	uniformBlocks modelPreviewUniformBlocks
+
 	object                  unitPreviewObject
 	objectProgram           uint32
 	objectUniforms          modelPreviewUniforms
@@ -172,7 +174,8 @@ func NewUnitPreview() (*UnitPreviewState, error) {
 	if err != nil {
 		return nil, err
 	}
-	pv.objectUniforms.generate(pv.objectProgram, "mvp", "model", "normalMat", "viewPosition", "texAlbedo", "texNormal", "shouldReconstructNormalZ", "udimShown")
+	pv.objectUniforms.generate(pv.objectProgram)
+	pv.uniformBlocks.generate(pv.objectProgram)
 
 	pv.objectWireframeProgram, err = glutils.CreateProgramFromSources(modelPreviewShaderCode,
 		"shaders/object_wireframe.vert",
@@ -182,7 +185,8 @@ func NewUnitPreview() (*UnitPreviewState, error) {
 	if err != nil {
 		return nil, err
 	}
-	pv.objectWireframeUniforms.generate(pv.objectWireframeProgram, "mvp", "color", "udimShown")
+	pv.objectWireframeUniforms.generate(pv.objectWireframeProgram)
+	pv.uniformBlocks.generate(pv.objectWireframeProgram)
 
 	pv.objectNormalVisProgram, err = glutils.CreateProgramFromSources(modelPreviewShaderCode,
 		"shaders/object_normal_vis.vert",
@@ -192,7 +196,7 @@ func NewUnitPreview() (*UnitPreviewState, error) {
 	if err != nil {
 		return nil, err
 	}
-	pv.objectNormalVisUniforms.generate(pv.objectNormalVisProgram, "mvp", "len", "showTangentBitangent", "udimShown")
+	pv.objectNormalVisUniforms.generate(pv.objectNormalVisProgram)
 
 	pv.dbgObj.genObjects(false)
 	pv.dbgObjProgram, err = glutils.CreateProgramFromSources(modelPreviewShaderCode,
@@ -202,23 +206,14 @@ func NewUnitPreview() (*UnitPreviewState, error) {
 	if err != nil {
 		return nil, err
 	}
-	pv.dbgObjUniforms.generate(pv.dbgObjProgram, "mvp", "color")
+	pv.dbgObjUniforms.generate(pv.dbgObjProgram)
 
-	setupTexture := func(textureID uint32) {
-		gl.BindTexture(gl.TEXTURE_2D, textureID)
-		gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.REPEAT)
-		gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.REPEAT)
-		gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR)
-		gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR)
-		gl.PixelStorei(gl.UNPACK_ROW_LENGTH, 0)
-		gl.BindTexture(gl.TEXTURE_2D, 0)
-	}
 	setupTexture(pv.object.texAlbedo)
 	setupTexture(pv.object.texNormal)
 
 	gl.UseProgram(pv.objectProgram)
-	gl.Uniform1i(pv.objectUniforms["texAlbedo"], 0)
-	gl.Uniform1i(pv.objectUniforms["texNormal"], 1)
+	pv.objectUniforms["texAlbedo"].set(int32(0))
+	pv.objectUniforms["texNormal"].set(int32(1))
 	gl.UseProgram(0)
 
 	pv.vfov = mgl32.DegToRad(60)
@@ -416,13 +411,16 @@ func (pv *UnitPreviewState) LoadUnit(fileID stingray.Hash, mainData, gpuData []b
 		uploadMissingTexture(pv.object.texNormal, []byte{128, 128, 255, 128})
 	}
 
-	gl.UseProgram(pv.objectProgram)
-	if reconstructNormalZ {
-		gl.Uniform1i(pv.objectUniforms["shouldReconstructNormalZ"], 1)
-	} else {
-		gl.Uniform1i(pv.objectUniforms["shouldReconstructNormalZ"], 0)
+	{
+		gl.UseProgram(pv.objectProgram)
+		blockIndices, ok := pv.uniformBlocks.programs[pv.objectProgram]
+		if !ok {
+			panic(fmt.Errorf("could not find uniform blocks for shader!"))
+		}
+		filediverBlock := pv.uniformBlocks.blocks[blockIndices["FilediverBlock"]]
+		filediverBlock.uniforms[filediverBlock.indices["shouldReconstructNormalZ"]].set(reconstructNormalZ)
+		gl.UseProgram(0)
 	}
-	gl.UseProgram(0)
 
 	// Flatten indices
 	var indices []uint32
@@ -603,27 +601,37 @@ func UnitPreview(name string, pv *UnitPreviewState) {
 
 			// Draw object
 			gl.Enable(gl.DEPTH_TEST)
+			var blockIndices map[string]uint32
+			var ok bool
 			if !pv.showWireframe {
 				gl.UseProgram(pv.objectProgram)
+				blockIndices, ok = pv.uniformBlocks.programs[pv.objectProgram]
 			} else {
 				gl.UseProgram(pv.objectWireframeProgram)
+				blockIndices, ok = pv.uniformBlocks.programs[pv.objectWireframeProgram]
+			}
+			if !ok {
+				panic(fmt.Errorf("could not find uniform blocks for shader!"))
 			}
 			gl.BindVertexArray(pv.object.vao)
-			if !pv.showWireframe {
-				gl.UniformMatrix4fv(pv.objectUniforms["mvp"], 1, false, &mvp[0])
-				gl.UniformMatrix4fv(pv.objectUniforms["model"], 1, false, &pv.model[0])
-				gl.UniformMatrix3fv(pv.objectUniforms["normalMat"], 1, false, &normal[0])
-				gl.Uniform3fv(pv.objectUniforms["viewPosition"], 1, &viewPosition[0])
-				gl.Uniform1iv(pv.objectUniforms["udimShown"], 64, &pv.udimsShown[0])
-				gl.ActiveTexture(gl.TEXTURE0)
-				gl.BindTexture(gl.TEXTURE_2D, pv.object.texAlbedo)
-				gl.ActiveTexture(gl.TEXTURE1)
-				gl.BindTexture(gl.TEXTURE_2D, pv.object.texNormal)
-			} else {
-				gl.UniformMatrix4fv(pv.objectWireframeUniforms["mvp"], 1, false, &mvp[0])
-				gl.Uniform4fv(pv.objectWireframeUniforms["color"], 1, &pv.wireframeColor[0])
-				gl.Uniform1iv(pv.objectWireframeUniforms["udimShown"], 64, &pv.udimsShown[0])
-			}
+
+			filediverBlock := pv.uniformBlocks.blocks[blockIndices["FilediverBlock"]]
+			filediverBlock.bind()
+			filediverBlock.uniforms[filediverBlock.indices["mvp"]].set(mvp)
+			filediverBlock.uniforms[filediverBlock.indices["model"]].set(pv.model)
+			filediverBlock.uniforms[filediverBlock.indices["normalMat"]].set(normal[:12])
+			filediverBlock.uniforms[filediverBlock.indices["viewPosition"]].set(viewPosition)
+			filediverBlock.uniforms[filediverBlock.indices["color"]].set(pv.wireframeColor)
+			filediverBlock.uniforms[filediverBlock.indices["len"]].set(pv.viewDistance * 0.02)
+			filediverBlock.uniforms[filediverBlock.indices["showTangentBitangent"]].set(pv.visualizeTangentBitangent)
+			filediverBlock.uniforms[filediverBlock.indices["udimShown[0]"]].set(pv.udimsShown)
+			filediverBlock.update()
+
+			gl.ActiveTexture(gl.TEXTURE0)
+			gl.BindTexture(gl.TEXTURE_2D, pv.object.texAlbedo)
+			gl.ActiveTexture(gl.TEXTURE1)
+			gl.BindTexture(gl.TEXTURE_2D, pv.object.texNormal)
+
 			gl.DrawElements(gl.TRIANGLES, pv.object.numIndices, gl.UNSIGNED_INT, nil)
 			gl.ActiveTexture(gl.TEXTURE0)
 			gl.BindTexture(gl.TEXTURE_2D, 0)
@@ -635,10 +643,6 @@ func UnitPreview(name string, pv *UnitPreviewState) {
 			if pv.visualizeNormals {
 				gl.UseProgram(pv.objectNormalVisProgram)
 				gl.BindVertexArray(pv.object.vao)
-				gl.UniformMatrix4fv(pv.objectNormalVisUniforms["mvp"], 1, false, &mvp[0])
-				gl.Uniform1f(pv.objectNormalVisUniforms["len"], pv.viewDistance*0.02)
-				gl.Uniform1iv(pv.objectNormalVisUniforms["showTangentBitangent"], 1, &pv.visualizeTangentBitangent)
-				gl.Uniform1iv(pv.objectNormalVisUniforms["udimShown"], 64, &pv.udimsShown[0])
 				gl.DrawElements(gl.POINTS, pv.object.numIndices, gl.UNSIGNED_INT, nil) // TODO: Make this not draw duplicate vertices
 				gl.BindVertexArray(0)
 				gl.UseProgram(0)
@@ -651,9 +655,10 @@ func UnitPreview(name string, pv *UnitPreviewState) {
 				gl.BindVertexArray(pv.dbgObj.vao)
 				{
 					aabbMVP := mvp.Mul4(pv.aabbMat)
-					gl.UniformMatrix4fv(pv.dbgObjUniforms["mvp"], 1, false, &aabbMVP[0])
+					filediverBlock.uniforms[filediverBlock.indices["mvp"]].set(aabbMVP)
+					filediverBlock.uniforms[filediverBlock.indices["color"]].set(pv.aabbColor)
+					filediverBlock.update()
 				}
-				gl.Uniform4fv(pv.dbgObjUniforms["color"], 1, &pv.aabbColor[0])
 				gl.DrawElements(gl.TRIANGLES, pv.dbgObj.numIndices, gl.UNSIGNED_INT, nil)
 				gl.BindVertexArray(0)
 				gl.UseProgram(0)

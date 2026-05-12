@@ -77,6 +77,8 @@ func (obj speedtreePreviewObject) deleteObjects() {
 type SpeedtreePreviewState struct {
 	fb *widgets.GLViewState
 
+	uniformBlocks modelPreviewUniformBlocks
+
 	object                  speedtreePreviewObject
 	objectProgram           uint32
 	objectUniforms          modelPreviewUniforms
@@ -173,7 +175,8 @@ func NewSpeedtreePreview() (*SpeedtreePreviewState, error) {
 	if err != nil {
 		return nil, err
 	}
-	pv.objectUniforms.generate(pv.objectProgram, "mvp", "model", "normalMat", "viewPosition", "texAlbedo", "texNormal", "opacityThreshold", "fibonacci_normal_lut")
+	pv.objectUniforms.generate(pv.objectProgram)
+	pv.uniformBlocks.generate(pv.objectProgram)
 
 	pv.objectWireframeProgram, err = glutils.CreateProgramFromSources(modelPreviewShaderCode,
 		"shaders/speedtree_wireframe.vert",
@@ -183,7 +186,8 @@ func NewSpeedtreePreview() (*SpeedtreePreviewState, error) {
 	if err != nil {
 		return nil, err
 	}
-	pv.objectWireframeUniforms.generate(pv.objectWireframeProgram, "mvp", "color")
+	pv.objectWireframeUniforms.generate(pv.objectWireframeProgram)
+	pv.uniformBlocks.generate(pv.objectWireframeProgram)
 
 	pv.objectNormalVisProgram, err = glutils.CreateProgramFromSources(modelPreviewShaderCode,
 		"shaders/speedtree_normal_vis.vert",
@@ -193,7 +197,7 @@ func NewSpeedtreePreview() (*SpeedtreePreviewState, error) {
 	if err != nil {
 		return nil, err
 	}
-	pv.objectNormalVisUniforms.generate(pv.objectNormalVisProgram, "mvp", "len", "showTangentBitangent", "fibonacci_normal_lut")
+	pv.objectNormalVisUniforms.generate(pv.objectNormalVisProgram)
 
 	pv.dbgObj.genObjects()
 	pv.dbgObjProgram, err = glutils.CreateProgramFromSources(modelPreviewShaderCode,
@@ -203,7 +207,7 @@ func NewSpeedtreePreview() (*SpeedtreePreviewState, error) {
 	if err != nil {
 		return nil, err
 	}
-	pv.dbgObjUniforms.generate(pv.dbgObjProgram, "mvp")
+	pv.dbgObjUniforms.generate(pv.dbgObjProgram)
 
 	setupLUT := func(textureID uint32) {
 		gl.BindTexture(gl.TEXTURE_2D, textureID)
@@ -217,13 +221,13 @@ func NewSpeedtreePreview() (*SpeedtreePreviewState, error) {
 	setupLUT(pv.object.lutFibonacci)
 
 	gl.UseProgram(pv.objectProgram)
-	gl.Uniform1i(pv.objectUniforms["texAlbedo"], 0)
-	gl.Uniform1i(pv.objectUniforms["texNormal"], 1)
-	gl.Uniform1i(pv.objectUniforms["fibonacci_normal_lut"], 2)
+	pv.objectUniforms["texAlbedoOpacity"].set(int32(0))
+	pv.objectUniforms["texNormal"].set(int32(1))
+	pv.objectUniforms["fibonacci_normal_lut"].set(int32(2))
 	gl.UseProgram(0)
 
 	gl.UseProgram(pv.objectNormalVisProgram)
-	gl.Uniform1i(pv.objectNormalVisUniforms["fibonacci_normal_lut"], 2)
+	pv.objectNormalVisUniforms["fibonacci_normal_lut"].set(int32(2))
 	gl.UseProgram(0)
 
 	pv.vfov = mgl32.DegToRad(60)
@@ -482,24 +486,33 @@ func SpeedtreePreview(name string, pv *SpeedtreePreviewState) {
 
 			// Draw object
 			gl.Enable(gl.DEPTH_TEST)
+			var blockIndices map[string]uint32
+			var ok bool
 			if !pv.showWireframe {
 				gl.UseProgram(pv.objectProgram)
+				blockIndices, ok = pv.uniformBlocks.programs[pv.objectProgram]
 			} else {
 				gl.UseProgram(pv.objectWireframeProgram)
+				blockIndices, ok = pv.uniformBlocks.programs[pv.objectWireframeProgram]
+			}
+			if !ok {
+				panic(fmt.Errorf("could not find uniform blocks for shader!"))
 			}
 			gl.BindVertexArray(pv.object.vao)
-			if !pv.showWireframe {
-				gl.UniformMatrix4fv(pv.objectUniforms["mvp"], 1, false, &mvp[0])
-				gl.UniformMatrix4fv(pv.objectUniforms["model"], 1, false, &pv.model[0])
-				gl.UniformMatrix3fv(pv.objectUniforms["normalMat"], 1, false, &normal[0])
-				gl.Uniform3fv(pv.objectUniforms["viewPosition"], 1, &viewPosition[0])
-			} else {
-				gl.UniformMatrix4fv(pv.objectWireframeUniforms["mvp"], 1, false, &mvp[0])
-				gl.Uniform4fv(pv.objectWireframeUniforms["color"], 1, &pv.wireframeColor[0])
-			}
+			filediverBlock := pv.uniformBlocks.blocks[blockIndices["FilediverBlock"]]
+			filediverBlock.bind()
+			filediverBlock.uniforms[filediverBlock.indices["mvp"]].set(mvp)
+			filediverBlock.uniforms[filediverBlock.indices["model"]].set(pv.model)
+			filediverBlock.uniforms[filediverBlock.indices["normalMat"]].set(normal[:12])
+			filediverBlock.uniforms[filediverBlock.indices["viewPosition"]].set(viewPosition)
+			filediverBlock.uniforms[filediverBlock.indices["color"]].set(pv.wireframeColor)
+			filediverBlock.uniforms[filediverBlock.indices["len"]].set(pv.viewDistance * 0.02)
+			filediverBlock.uniforms[filediverBlock.indices["showTangentBitangent"]].set(pv.visualizeTangentBitangent)
+			filediverBlock.update()
 			for idx := range pv.object.materials {
 				if !pv.showWireframe {
-					gl.Uniform1f(pv.objectUniforms["opacityThreshold"], pv.object.materials[idx].opacityThreshold)
+					filediverBlock.uniforms[filediverBlock.indices["opacityThreshold"]].set(pv.object.materials[idx].opacityThreshold)
+					filediverBlock.update()
 					gl.ActiveTexture(gl.TEXTURE0)
 					gl.BindTexture(gl.TEXTURE_2D, pv.object.materials[idx].texAlbedoOpacity)
 					gl.ActiveTexture(gl.TEXTURE1)
@@ -521,9 +534,6 @@ func SpeedtreePreview(name string, pv *SpeedtreePreviewState) {
 				gl.BindVertexArray(pv.object.vao)
 				gl.ActiveTexture(gl.TEXTURE2)
 				gl.BindTexture(gl.TEXTURE_2D, pv.object.lutFibonacci)
-				gl.UniformMatrix4fv(pv.objectNormalVisUniforms["mvp"], 1, false, &mvp[0])
-				gl.Uniform1f(pv.objectNormalVisUniforms["len"], pv.viewDistance*0.02)
-				gl.Uniform1iv(pv.objectNormalVisUniforms["showTangentBitangent"], 1, &pv.visualizeTangentBitangent)
 				gl.DrawElements(gl.POINTS, pv.object.numIndices, pv.object.indexType, nil) // TODO: Make this not draw duplicate vertices
 				gl.BindVertexArray(0)
 				gl.UseProgram(0)
@@ -536,9 +546,10 @@ func SpeedtreePreview(name string, pv *SpeedtreePreviewState) {
 				gl.BindVertexArray(pv.dbgObj.vao)
 				{
 					aabbMVP := mvp.Mul4(pv.aabbMat)
-					gl.UniformMatrix4fv(pv.dbgObjUniforms["mvp"], 1, false, &aabbMVP[0])
+					filediverBlock.uniforms[filediverBlock.indices["mvp"]].set(aabbMVP)
+					filediverBlock.uniforms[filediverBlock.indices["color"]].set(pv.aabbColor)
+					filediverBlock.update()
 				}
-				gl.Uniform4fv(pv.dbgObjUniforms["color"], 1, &pv.aabbColor[0])
 				gl.DrawElements(gl.TRIANGLES, pv.dbgObj.numIndices, gl.UNSIGNED_INT, nil)
 				gl.BindVertexArray(0)
 				gl.UseProgram(0)

@@ -10,9 +10,21 @@ in vec3 fragTangentFragmentPosition;
 in mat3 dbg_fragTBN;
 in mat3 dbg_fragITBN;
 
+layout(shared) uniform FilediverBlock {
+    mat4 mvp; // projection*view*model
+    mat4 model;
+    mat3 normalMat; // normal matrix = transpose(inverse(model))
+    vec3 viewPosition;
+    vec4 color;
+    float opacityThreshold;
+    float len;
+    bool shouldReconstructNormalZ;
+    bool showTangentBitangent;
+    bool udimShown[64];
+};
+
 uniform sampler2D texAlbedo;
 uniform sampler2D texNormal;
-uniform bool shouldReconstructNormalZ;
 
 // Reconstructs the Z value if Z was truncated from XYZ.
 float reconstructNormalZ(vec2 xy) {

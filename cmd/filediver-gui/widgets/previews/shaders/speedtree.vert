@@ -13,10 +13,18 @@ out vec3 fragTangentFragmentPosition;
 out mat3 dbg_fragTBN;
 out mat3 dbg_fragITBN;
 
-uniform mat4 mvp; // projection*view*model
-uniform mat4 model;
-uniform mat3 normalMat; // normal matrix = transpose(inverse(model))
-uniform vec3 viewPosition;
+layout(shared) uniform FilediverBlock {
+    mat4 mvp; // projection*view*model
+    mat4 model;
+    mat3 normalMat; // normal matrix = transpose(inverse(model))
+    vec3 viewPosition;
+    vec4 color;
+    float opacityThreshold;
+    float len;
+    bool shouldReconstructNormalZ;
+    bool showTangentBitangent;
+    bool udimShown[64];
+};
 
 uniform sampler2D fibonacci_normal_lut;
 
