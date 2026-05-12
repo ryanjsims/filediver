@@ -275,6 +275,7 @@ type modelPreviewStateInterface interface {
 	ViewRotation() mgl32.Vec2
 	SetViewRotation(mgl32.Vec2)
 	Model() mgl32.Mat4
+	Translate(mgl32.Vec4)
 	VFOV() float32
 	AutoZoomEnabled() bool
 	SetDoAutoZoomNextFrame(bool)
@@ -325,9 +326,25 @@ func getModelPreviewProcessInputFunction(pv modelPreviewStateInterface) func() {
 
 		if imgui.IsItemActive() {
 			md := io.MouseDelta()
-			viewRotation := pv.ViewRotation().Add(mgl32.Vec2{md.X, md.Y}.Mul(-0.01))
-			viewRotation[1] = mgl32.Clamp(viewRotation[1], -1.55, 1.55)
-			pv.SetViewRotation(viewRotation)
+			if io.KeyShift() {
+				var viewPosition mgl32.Vec3
+				{
+					mat := mgl32.Ident3()
+					mat = mat.Mul3(mgl32.Rotate3DY(pv.ViewRotation()[0]))
+					mat = mat.Mul3(mgl32.Rotate3DX(pv.ViewRotation()[1]))
+					viewPosition = mat.Mul3x1(mgl32.Vec3{0, 0, pv.ViewDistance()})
+				}
+				viewDirection := mgl32.Vec3{0, 0, 0}.Sub(viewPosition).Normalize()
+				cameraRight := viewDirection.Cross(mgl32.Vec3{0, 1, 0}).Normalize() // y up
+				cameraUp := cameraRight.Cross(viewDirection)
+				fmt.Printf("camera up: %v\ncamera right: %v\nview direction: %v\n", cameraUp, cameraRight, viewDirection)
+				translation := cameraUp.Mul(md.Y).Add(cameraRight.Mul(md.X)).Mul(0.001 * pv.ViewDistance())
+				pv.Translate(translation.Vec4(1))
+			} else {
+				viewRotation := pv.ViewRotation().Add(mgl32.Vec2{md.X, md.Y}.Mul(-0.01))
+				viewRotation[1] = mgl32.Clamp(viewRotation[1], -1.55, 1.55)
+				pv.SetViewRotation(viewRotation)
+			}
 		}
 		if imgui.IsItemDeactivated() && pv.AutoZoomEnabled() {
 			pv.SetDoAutoZoomNextFrame(true)

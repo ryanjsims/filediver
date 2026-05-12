@@ -137,6 +137,10 @@ func (pv *SpeedtreePreviewState) ViewRotation() mgl32.Vec2 {
 func (pv *SpeedtreePreviewState) Model() mgl32.Mat4 {
 	return pv.model
 }
+func (pv *SpeedtreePreviewState) Translate(translation mgl32.Vec4) {
+	translation = stingrayToGLCoords.Mul4x1(translation)
+	pv.model = pv.model.Mul4(mgl32.Translate3D(translation.X(), -translation.Y(), translation.Z()))
+}
 func (pv *SpeedtreePreviewState) VFOV() float32 {
 	return pv.vfov
 }
@@ -722,6 +726,7 @@ func SpeedtreePreview(name string, pv *SpeedtreePreviewState) {
 	)
 
 	if imgui.Button(fnt.I.Home) {
+		pv.model = stingrayToGLCoords
 		pv.viewRotation = mgl32.Vec2{}
 		pv.doAutoZoomNextFrame = true
 		pv.animTime = 0

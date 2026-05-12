@@ -137,6 +137,10 @@ func (pv *UnitPreviewState) ViewRotation() mgl32.Vec2 {
 func (pv *UnitPreviewState) Model() mgl32.Mat4 {
 	return pv.model
 }
+func (pv *UnitPreviewState) Translate(translation mgl32.Vec4) {
+	translation = stingrayToGLCoords.Mul4x1(translation)
+	pv.model = pv.model.Mul4(mgl32.Translate3D(translation.X(), -translation.Y(), translation.Z()))
+}
 func (pv *UnitPreviewState) VFOV() float32 {
 	return pv.vfov
 }
@@ -834,6 +838,7 @@ func UnitPreview(name string, pv *UnitPreviewState) {
 	)
 
 	if imgui.Button(fnt.I.Home) {
+		pv.model = stingrayToGLCoords
 		pv.viewRotation = mgl32.Vec2{}
 		pv.doAutoZoomNextFrame = true
 		pv.animTime = 0
