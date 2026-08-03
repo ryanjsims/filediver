@@ -120,6 +120,7 @@ $POSITIONING_CLOSEST_TO_LISTENER
 16x08_001_slice_04
 16x08_destroyed_proxy
 16x08_proxy
+16x16_001_ceremonial_flags
 16x16_001_rc
 16x16_001_rc1
 16x16_001_rc_collapsed
@@ -212,6 +213,7 @@ $POSITIONING_CLOSEST_TO_LISTENER
 3eb1ba63-3a53-4846-970b-57e3d4d75d2b
 3eef0777-8d83-485b-ab05-9db3b76244f2
 3f977960-89c8-421a-a0e3-066e233b8a49
+3x_cy_trench_wall_corner
 3x_cy_trench_wall_x2
 3x_cy_trench_wall_x4
 3x_cy_trench_wall_x6
@@ -2455,11 +2457,19 @@ barrel_
 barrel_01
 barrel_02
 barrel_1
+barrel_10
+barrel_11
+barrel_12
+barrel_13
+barrel_14
 barrel_2
 barrel_3
 barrel_4
 barrel_5
 barrel_6
+barrel_7
+barrel_8
+barrel_9
 barrel_spin
 base
 base/Deploy
@@ -2575,6 +2585,7 @@ black_box_3
 black_box_4
 black_box_5
 black_box_6
+black_hole
 blacksaffron_sample_base_
 blacksaffron_sample_base_01
 blacksaffron_sample_base_1
@@ -3353,6 +3364,9 @@ case_03_3x3
 cave_stalactites_01
 cave_stalactites_02
 cave_stalactites_03
+cave_stalagmites_large_01
+cave_stalagmites_medium_
+cave_stalagmites_medium_01
 cb2821ca-a40f-40eb-b1cb-85ac8e75a625
 ccdafa82-4a0d-41b7-952b-3c10361bab92
 cctv_camera_01
@@ -3388,6 +3402,10 @@ chart_max_time
 chimney_01
 chm
 chroma
+cities_berserker_corpse_01
+cities_conscript_corpse_01
+cities_conscript_corpse_02
+cities_conscript_corpse_03
 cities_corpse_piles_01
 cities_corpse_piles_02
 cities_corpse_piles_03
@@ -3401,14 +3419,22 @@ cities_cy_barrels_1x2
 cities_cy_container_01
 cities_cy_crate_01
 cities_cy_crate_01_1x2
+cities_cy_crate_01_2stack
+cities_cy_crate_open_01
 cities_cy_fence_3x
 cities_flood_light_01
 cities_flood_light_02
 cities_forest_tree_01_gibs
 cities_forest_tree_02_gibs
+cities_rock_cliff_face_01
+cities_rock_cliff_face_02
 cities_rock_huge_03
 cities_rock_rubble_03
 cities_rock_rubble_04
+cities_savanna_rock_trench
+cities_se_flag_vertical_01
+cities_search_light_air_large
+cities_soldier_corpse_01
 cities_trench_floor_01
 city_car_
 city_car_01
@@ -3419,6 +3445,8 @@ city_car_05
 city_car_06
 city_car_07
 city_car_08
+city_center_spotlight_01
+civilian_extract_door_
 civilian_spawn_door
 civilian_spawn_door1
 clamp
@@ -78077,6 +78105,7 @@ corpses_old_sitting_5
 corpses_old_sitting_6
 corpses_old_sitting_7
 corpses_old_sitting_8
+corpses_old_skeleton_pile
 count
 counter
 counter_door_01
@@ -78273,6 +78302,9 @@ cy_detector_tower
 cy_explosive_battery_01
 cy_explosive_battery_3x2
 cy_explosive_battery_bunched
+cy_factory_city_wall_20m
+cy_factory_city_wall_40m
+cy_factory_city_wall_80m
 cy_fence_3x
 cy_fence_3x1
 cy_fence_3x2
@@ -78391,6 +78423,8 @@ cyborg_emplacement_mg
 cyborg_emplacement_mg1
 cyborg_factory_chimney
 cyborg_gate
+cyborg_gather_footage_box
+cyborg_gather_footage_crate
 cyborg_gunship_spawner
 cyborg_gunship_spawner1
 cyborg_hack_turrets
@@ -78713,8 +78747,10 @@ draw_as_quad
 draw_order
 draw_sub
 drill
+dripping_blood_goo_thin_2m
 dripping_bug_goo_4m
 dripping_bug_goo_8m
+dripping_bug_goo_thin_2m
 driver_idle
 drone_assault_rifle
 drop_backpack
@@ -78980,6 +79016,7 @@ f9183790-ef48-44c7-8666-4ab127da8fe0
 f99f8130-f211-4f6f-969f-ad5935e9584c
 f>core/stingray_renderer/shading_environment_components/weathering_resources
 face_index
+factory_trench_wall_3m_01
 faf_missile_launcher_marker
 fallback_resource
 fallback_resource_package
@@ -79086,6 +79123,7 @@ final
 find_global_light
 fire
 fire_add
+fire_ground_medium_plume
 fire_hydrant_01
 fire_idle
 fire_lock
@@ -80202,6 +80240,7 @@ hellpod_jammed_pinata2
 hellpod_jammed_pinata3
 hellpod_launcher
 hellpod_launcher_blocker
+hellpod_lid_tutorial_
 hellpod_optimized_landed
 hellpod_optimized_landed_lid
 hellpod_warning_light_01
@@ -80414,6 +80453,7 @@ il_monolith
 il_platform_circle_6r
 il_platform_stairs_left_6r
 il_platform_stairs_left_6r1
+il_platform_stairs_right_6r
 il_portal_batteries
 il_portal_batteries1
 il_portal_batteries2
@@ -81044,6 +81084,7 @@ metallib
 metallic
 metallic_map
 mid_height
+military_antenna_small_01
 min_distance_between_gates
 min_height
 min_linear_mag_mip_point
@@ -81527,6 +81568,7 @@ planet_processing
 plant_flag
 plasma_rifle_marker
 platform
+platform_kit_floor_32m32m
 platform_kit_floor_8m8m
 platform_kit_floor_8m8m1
 platform_kit_floor_8m8m2
@@ -81573,6 +81615,7 @@ platform_kit_stairs
 platform_kit_stairs_1mh_4mw
 platform_kit_stairs_1mh_4mw_plain
 platform_kit_stairs_1mh_corner45
+platform_kit_stairs_3mh_4mw
 platform_kit_stairs_b
 platform_kit_stairs_b1
 platform_kit_stairs_double
@@ -81582,6 +81625,11 @@ platform_kit_stairs_wall_6m2m5
 platform_kit_stairs_wall_6m2m6
 platform_kit_stairs_wall_6m2m7
 platform_kit_stairs_wall_6m2m8
+platform_kit_wall_16m4m_01
+platform_kit_wall_16m8m_01
+platform_kit_wall_24m4m_
+platform_kit_wall_24m4m_01
+platform_kit_wall_24m8m_01
 platform_kit_wall_4m4m_01
 platform_kit_wall_4m4m_02
 platform_kit_wall_corner_01
@@ -82301,6 +82349,10 @@ scaffolding_support_01
 scaffolding_support_02
 scaffolding_walkway_
 scaffolding_walkway_01
+scaffolding_walkway_01_2x1
+scaffolding_walkway_01_2x2
+scaffolding_walkway_01_3x2
+scaffolding_walkway_01_4x2
 scale
 scaleform_studio_project
 scaleform_vr_hud
@@ -82389,6 +82441,10 @@ se_chainfence_wall_full1
 se_chainfence_wall_full2
 se_chainfence_wall_full3
 se_chainfence_wall_half
+se_chainfence_wall_half_broken
+se_cities_destroyed_car_01
+se_cities_destroyed_car_04
+se_cities_destroyed_car_05
 se_city_adboard_asset_400x400_01c
 se_city_adboard_asset_800x400_01c
 se_city_info_stand_med_01a
@@ -82538,6 +82594,14 @@ se_wallmed_wall_top_full_blue
 se_wallmed_wall_top_third
 seaf_gun_ammo_marker
 seaf_helmet
+seaf_soldier_male_corpse_
+seaf_soldier_male_corpse_01
+seaf_soldier_male_corpse_02
+seaf_soldier_male_corpse_03
+seaf_soldier_male_corpse_04
+seaf_soldier_male_corpse_05
+seaf_soldier_male_corpse_06
+seaf_soldier_male_corpse_07
 search_light_air
 search_light_air_large
 search_light_air_large1
@@ -82722,6 +82786,7 @@ shell_layer_length
 shell_length_0
 shell_length_pixel
 shell_material
+ship
 shiphub_collision
 shotgun_8ga
 shotgun_doublebarrel_marker
@@ -82803,10 +82868,15 @@ small_generic_windmill_7
 small_pipes_2m
 small_pipes_connection
 small_pipes_holder
+small_pipes_over_connection
 smartobject
 smartobject_id
 smartobject_type
+smoke_plume_dark_medium_
+smoke_plume_dark_medium_01
+smoke_plume_dark_medium_02
 smoke_spray_plume_01
+smoke_venting_sideways_y
 smooth
 smooth_buffer0
 smooth_rock_large_01
@@ -82842,6 +82912,7 @@ sparks_medium2
 sparks_medium3
 sparks_medium4
 sparks_medium5
+sparks_small_light_smoking
 spawn
 spawn_armory_debug
 spawn_entity
@@ -83185,6 +83256,7 @@ temporal_aa:depth_stabilize
 temporal_aa_depth
 temporal_aa_depth:default:PLATFORM_WIN32:RENDERER_D3D11
 temporal_aa_depth_compute
+tentacles
 terminal
 terminal1
 terminal_lamp_01
@@ -83424,6 +83496,7 @@ tutorial_bug_zoo_wall_03
 tutorial_bug_zoo_wall_04
 tutorial_bug_zoo_wall_05
 tutorial_cape_room_floor_01
+tutorial_cape_room_wall_03
 tutorial_death_trench_floor_02
 tutorial_death_trench_wall_
 tutorial_death_trench_wall_01
@@ -83693,6 +83766,9 @@ weaponcrate_closed_5
 weaponcrate_closed_6
 weaponcrate_closed_7
 weaponcrate_closed_8
+weather_tower_mountain_01
+weather_tower_mountain_02
+weather_tower_mountain_03
 weather_vane_short_01
 weather_vane_tall_
 weather_vane_tall_01
