@@ -633,8 +633,8 @@ func (a *App) MatchingFiles(
 		}
 		if len(includeOnlyTypes) != 0 {
 			typeVariations := a.hashNameVariationsForMatch(id.Type)
-			if slices.ContainsFunc(includeOnlyTypes, func(includedType string) bool {
-				return !slices.Contains(typeVariations, includedType)
+			if !slices.ContainsFunc(includeOnlyTypes, func(includedType string) bool {
+				return slices.Contains(typeVariations, includedType)
 			}) {
 				continue
 			}

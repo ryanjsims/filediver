@@ -16,6 +16,7 @@ import (
 	"github.com/xypwn/filediver/hashes"
 	"github.com/xypwn/filediver/stingray"
 	"github.com/xypwn/filediver/stingray/level"
+	"github.com/xypwn/filediver/stingray/prefab"
 )
 
 func dumpLevelObjectNames(a *app.App, fileID stingray.FileID) error {
@@ -27,22 +28,7 @@ func dumpLevelObjectNames(a *app.App, fileID stingray.FileID) error {
 	if err != nil {
 		return err
 	}
-	// Lets not try to guess a bunch of UUIDs, its not like its going to change our understanding much
-	// for _, prefab := range levelData.Prefabs {
-	// 	knownName, ok := a.Hashes[prefab.UUIDHash]
-	// 	if ok {
-	// 		fmt.Println(knownName)
-	// 	} else {
-	// 		fmt.Println(prefab.UUIDHash.String())
-	// 	}
-	// }
 	for _, unit := range levelData.Units {
-		// knownName, ok := a.Hashes[unit.UUIDHash]
-		// if ok {
-		// 	fmt.Println(knownName)
-		// } else {
-		// 	fmt.Println(unit.UUIDHash.String())
-		// }
 		knownName, ok := a.Hashes[unit.Name]
 		if ok {
 			fmt.Println(knownName)
@@ -51,27 +37,41 @@ func dumpLevelObjectNames(a *app.App, fileID stingray.FileID) error {
 		}
 	}
 	for _, extra := range levelData.UnkExtraUnitContainers {
-		// for _, prefab := range extra.ExtraPrefabs {
-		// 	knownName, ok := a.Hashes[prefab.UnkHash1]
-		// 	if ok {
-		// 		fmt.Println(knownName)
-		// 	} else {
-		// 		fmt.Println(prefab.UnkHash1.String())
-		// 	}
-		// }
 		for _, unit := range extra.ExtraUnits {
-			// knownName, ok := a.Hashes[unit.UUIDHash]
-			// if ok {
-			// 	fmt.Println(knownName)
-			// } else {
-			// 	fmt.Println(unit.UUIDHash.String())
-			// }
 			knownName, ok := a.Hashes[unit.Name]
 			if ok {
 				fmt.Println(knownName)
 			} else {
 				fmt.Println(unit.Name.String())
 			}
+		}
+	}
+	return nil
+}
+
+func dumpPrefabObjectNames(a *app.App, fileID stingray.FileID) error {
+	bs, err := a.DataDir.Read(fileID, stingray.DataMain)
+	if err != nil {
+		return err
+	}
+	prefabData, err := prefab.Load(bytes.NewReader(bs))
+	if err != nil {
+		return err
+	}
+	for _, unit := range prefabData.Units {
+		knownName, ok := a.Hashes[unit.Name]
+		if ok {
+			fmt.Println(knownName)
+		} else {
+			fmt.Println(unit.Name.String())
+		}
+	}
+	for _, prefab := range prefabData.NestedPrefabs {
+		knownName, ok := a.Hashes[prefab.Name]
+		if ok {
+			fmt.Println(knownName)
+		} else {
+			fmt.Println(prefab.Name.String())
 		}
 	}
 	return nil
@@ -114,7 +114,7 @@ func main() {
 	}
 	prt.NoStatus()
 
-	files, err := a.MatchingFiles("", "", []string{"level"}, nil, "", prt.Infof)
+	files, err := a.MatchingFiles("", "", []string{"prefab", "level"}, nil, "", prt.Infof)
 	if err != nil {
 		prt.Fatalf("%v", err)
 	}
@@ -124,7 +124,13 @@ func main() {
 	count := 0
 	for fileID := range files {
 		prt.Statusf("File %v/%v - %v.%v", count+1, len(files), fileID.Name.String(), a.LookupHash(fileID.Type))
-		if err := dumpLevelObjectNames(a, fileID); err != nil {
+		dumpNames := dumpLevelObjectNames
+		if fileID.Type == stingray.Sum("prefab") {
+			dumpNames = dumpPrefabObjectNames
+		} else if fileID.Type != stingray.Sum("level") {
+			continue
+		}
+		if err := dumpNames(a, fileID); err != nil {
 			if errors.Is(err, context.Canceled) {
 				prt.NoStatus()
 				prt.Warnf("Name dump canceled, exiting cleanly")

@@ -23,7 +23,7 @@ type Header struct {
 type Unit struct {
 	Unk00 uint64
 	stingray.Hash
-	Unk01 uint64
+	Name  stingray.Hash
 	Unk02 uint64
 	stingray.Transform
 	UnkFloats mgl32.Vec4
@@ -36,9 +36,9 @@ func (o *Unit) Path() stingray.Hash {
 }
 
 type NestedPrefab struct {
-	UnkInt  uint32
-	UnkHash stingray.Hash
-	Path    stingray.Hash
+	UnkInt uint32
+	Name   stingray.Hash
+	Path   stingray.Hash
 	stingray.Transform
 	UnkFloats mgl32.Vec3
 }

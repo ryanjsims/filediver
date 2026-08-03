@@ -25,7 +25,7 @@ type SimpleHeader struct {
 type SimpleUnit struct {
 	UnkHash0 string `json:"unk_hash_0"`
 	Path     string `json:"path"`
-	UnkHash1 string `json:"unk_hash_1"`
+	Name     string `json:"name"`
 	UnkHash2 string `json:"unk_hash_2"`
 	stingray.Transform
 	UnkRotation mgl32.Vec4 `json:"unk_rotation"`
@@ -33,9 +33,9 @@ type SimpleUnit struct {
 }
 
 type SimpleNestedPrefab struct {
-	UnkInt  uint32 `json:"unk_int"`
-	UnkHash string `json:"unk_hash"`
-	Path    string `json:"path"`
+	UnkInt uint32 `json:"unk_int"`
+	Name   string `json:"name"`
+	Path   string `json:"path"`
 	stingray.Transform
 	UnkFloats mgl32.Vec3 `json:"unk_floats"`
 }
@@ -60,7 +60,7 @@ func ExtractPrefabJSON(ctx *extractor.Context) error {
 		units = append(units, SimpleUnit{
 			UnkHash0:    ctx.LookupHash(stingray.Hash{Value: unit.Unk00}),
 			Path:        ctx.LookupHash(unit.Path()),
-			UnkHash1:    ctx.LookupHash(stingray.Hash{Value: unit.Unk01}),
+			Name:        ctx.LookupHash(unit.Name),
 			UnkHash2:    ctx.LookupHash(stingray.Hash{Value: unit.Unk02}),
 			Transform:   unit.Transform,
 			UnkRotation: unit.UnkFloats,
@@ -71,7 +71,7 @@ func ExtractPrefabJSON(ctx *extractor.Context) error {
 	for _, prefab := range prefabData.NestedPrefabs {
 		prefabs = append(prefabs, SimpleNestedPrefab{
 			UnkInt:    prefab.UnkInt,
-			UnkHash:   ctx.LookupHash(prefab.UnkHash),
+			Name:      ctx.LookupHash(prefab.Name),
 			Path:      ctx.LookupHash(prefab.Path),
 			Transform: prefab.Transform,
 			UnkFloats: prefab.UnkFloats,
