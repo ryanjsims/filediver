@@ -50,6 +50,7 @@ material_loaders: List[FilediverMaterialLoaderInterface] = [
     TankGlassMaterialLoader(),
     TerrainProjectorMaterialLoader(),
     TerrainMaterialLoader(),
+    WaterMaterialLoader(),
     WaterfallMaterialLoader(),
 ]
 
