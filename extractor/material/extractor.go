@@ -1502,6 +1502,11 @@ func AddMaterial(ctx *extractor.Context, mat *material.Material, doc *gltf.Docum
 		}
 	}
 
+	if _, contains := materialSettingsAndTextures["dirt_color"]; contains {
+		planet := ctx.GetPlanet()
+		materialSettingsAndTextures["dirt_color"] = ctx.EnvironmentMap()[planet.PlanetType].DirtColor
+	}
+
 	entityHash := ctx.FileID().Name
 	if cfg.Unit.EntityName != "" {
 		newHash, err := stingray.ParseOrSum(cfg.Unit.EntityName)
