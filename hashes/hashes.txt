@@ -104407,6 +104407,7 @@ packages/generated/loadout/eagle_gas
 packages/generated/loadout/eagle_missile
 packages/generated/loadout/eagle_napalm
 packages/generated/loadout/eagle_rocket
+packages/generated/loadout/earthquake
 packages/generated/loadout/emp_grenade
 packages/generated/loadout/energy_shield
 packages/generated/loadout/energy_shield_backpack
@@ -104449,6 +104450,7 @@ packages/generated/loadout/incendiary_grenade
 packages/generated/loadout/incendiary_mine
 packages/generated/loadout/jet_rifle
 packages/generated/loadout/jet_rifle_phoenix
+packages/generated/loadout/jumping_mine
 packages/generated/loadout/jumppack_backpack
 packages/generated/loadout/laser_cannon
 packages/generated/loadout/laser_cannon_turret
@@ -104519,6 +104521,8 @@ packages/generated/loadout/samples_bugs
 packages/generated/loadout/samples_illuminate
 packages/generated/loadout/samples_legendarium
 packages/generated/loadout/samples_oil
+packages/generated/loadout/samples_spice
+packages/generated/loadout/samples_tech
 packages/generated/loadout/samples_uranium
 packages/generated/loadout/sandstorm
 packages/generated/loadout/seaf_assault_rifle
@@ -104531,6 +104535,7 @@ packages/generated/loadout/shield_grenade
 packages/generated/loadout/shotgun_double_freedom
 packages/generated/loadout/shotgun_doublebarrel
 packages/generated/loadout/shotgun_nacho
+packages/generated/loadout/shoulder_mounted_camera
 packages/generated/loadout/smart_pistol
 packages/generated/loadout/smg_defender
 packages/generated/loadout/smg_flamer
