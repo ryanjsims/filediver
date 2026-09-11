@@ -346,8 +346,12 @@ func (pv *UnitPreviewState) LoadUnit(fileID stingray.Hash, mainData, gpuData []b
 	if len(mesh.Normals) == 0 {
 		return fmt.Errorf("mesh contains no normals")
 	}
-	if len(mesh.UVCoords) == 0 || len(mesh.UVCoords[0]) == 0 {
-		return fmt.Errorf("mesh contains no UV coordinates")
+	if len(mesh.UVCoords) == 0 {
+		mesh.UVCoords = make([][][2]float32, 0)
+	}
+	if len(mesh.UVCoords[0]) == 0 {
+		mesh.UVCoords = append(mesh.UVCoords, make([][2]float32, 0))
+		mesh.UVCoords[0] = append(mesh.UVCoords[0], make([][2]float32, len(mesh.Positions))...)
 	}
 
 	// Upload object texture
