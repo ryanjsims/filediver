@@ -1,6 +1,10 @@
 package particle
 
 import (
+	"encoding/binary"
+	"fmt"
+	"io"
+
 	"github.com/go-gl/mathgl/mgl32"
 	"github.com/xypwn/filediver/stingray"
 )
@@ -285,10 +289,74 @@ type ParticleSystem struct {
 	ParticleSystemHeader
 	Controllers []Controller
 	Emitters    []Emitter
+	Visualizers []Visualizer
 }
 
 type Particle struct {
 	Header
 	Variables       []Variable
 	ParticleSystems []ParticleSystem
+}
+
+func Load(r io.ReadSeeker) (*Particle, error) {
+	// base, err := r.Seek(0, io.SeekCurrent)
+	// if err != nil {
+	// 	return nil, err
+	// }
+
+	var header Header
+	if err := binary.Read(r, binary.LittleEndian, &header); err != nil {
+		return nil, fmt.Errorf("reading header: %v", err)
+	}
+
+	variableNames := make([]stingray.ThinHash, header.VariableCount)
+	if err := binary.Read(r, binary.LittleEndian, variableNames); err != nil {
+		return nil, fmt.Errorf("reading variable names: %v", err)
+	}
+
+	variableValues := make([]mgl32.Vec3, header.VariableCount)
+	if err := binary.Read(r, binary.LittleEndian, variableValues); err != nil {
+		return nil, fmt.Errorf("reading variable values: %v", err)
+	}
+
+	variables := make([]Variable, 0)
+	for i := range header.VariableCount {
+		variables = append(variables, Variable{
+			Name:  variableNames[i],
+			Value: variableValues[i],
+		})
+	}
+
+	particleSystems := make([]ParticleSystem, 0)
+	for range header.ParticleSystemCount {
+		systemBase, err := r.Seek(0, io.SeekCurrent)
+		if err != nil {
+			return nil, fmt.Errorf("seeking system base: %v", err)
+		}
+		var systemHeader ParticleSystemHeader
+		if err := binary.Read(r, binary.LittleEndian, &systemHeader); err != nil {
+			return nil, fmt.Errorf("reading particle system header: %v", err)
+		}
+
+		// read particle details here...
+		controllers := make([]Controller, 0)
+		emitters := make([]Emitter, 0)
+		visualizers := make([]Visualizer, 0)
+
+		if _, err := r.Seek(systemBase+int64(systemHeader.TotalSize), io.SeekStart); err != nil {
+			return nil, fmt.Errorf("seeking next system header: %v", err)
+		}
+		particleSystems = append(particleSystems, ParticleSystem{
+			ParticleSystemHeader: systemHeader,
+			Controllers:          controllers,
+			Emitters:             emitters,
+			Visualizers:          visualizers,
+		})
+	}
+
+	return &Particle{
+		Header:          header,
+		Variables:       variables,
+		ParticleSystems: particleSystems,
+	}, nil
 }
