@@ -1,23 +1,51 @@
-// originally from https://github.com/RaidingForPants/hd2-particle-modder
-// modified by filediver devs
+import std.core;
 
-#include <std/io>
-#include <std/core>
+// import stingray; // Not sure where to put custom library files yet =/
+// stingray.hexpat
+import std.io;
 
-using coloredVariable<T, auto colorStr> = T [[color(colorStr)]];
+using ThinMurmurHash;
+using MurmurHash;
 
-struct GraphValue {
-    float value;
-    if (value == 10000) {
-        //continue;
-    }
+fn formatThinHash(ThinMurmurHash hash) {
+    return std::format("{:08X}", hash.value);
 };
 
-struct Graph {
-    GraphValue xArray[10];
-    u32 xValues = std::core::member_count(xArray);
-    GraphValue yArray[xValues];
-} [[hex::visualize("scatter_plot", xArray, yArray)]];
+fn formatHash(MurmurHash hash) {
+    return std::format("{:016X}", hash.value);
+};
+
+struct ThinMurmurHash {
+    u32 value;
+} [[format("formatThinHash")]];
+
+struct MurmurHash {
+    u64 value;
+} [[format("formatHash")]];
+// end stingray.hexpat
+
+#pragma pattern_limit 67108864
+#pragma array_limit 524288
+#pragma loop_limit 65536
+
+fn relative_to_parents_parent(u128 offset) {
+    return addressof(parent.parent.parent);
+};
+
+fn relative_to_parent(u128 offset) {
+    return addressof(parent.parent);
+};
+
+u32 magic = 0;
+
+struct Pair<T1, T2> {
+    T1 val1;
+    T2 val2;
+};
+
+struct Vector3 {
+    float x, y, z;
+};
 
 struct Vector4 {
     float x, y, z, w;
@@ -27,315 +55,236 @@ struct Matrix4 {
     Vector4 rows[4];
 };
 
-enum VisualizerType : u32 {
-    Billboard = 0x00,
-    Light = 0x01,
-    Mesh = 0x02,
-    Unknown3 = 0x03,
-    Unknown4 = 0x04
+enum GraphType : u32 {
+    XY = 4,
+    Color = 5,
 };
 
-enum EmitterType : u32 {
-    Burst = 0x0C,
-    Rate = 0x0B,
-    unk0 = 0x1C,
-    unk1 = 0x03,
-    unk2 = 0x05,
-    unk3 = 0x19,
-    unk4 = 0x24
+struct XYGraph {
+    float xValues[10];
+    float yValues[10];
 };
 
-enum ComponentType : u32 {
-    Graph = 0x04,
-    ColorGraph = 0x05,
-    ColorGraphNoScale = 0x0F
+struct GradientGraph {
+    float xValues[10];
+    Vector3 yValues[10];
 };
 
-struct BurstEmitterGraphPoint {
-    float time;
-    u32 minParticles;
-    u32 maxParticles;
+enum ControllerFormat : u32 {
+    Unk0,
+    MinMax,
+    VelocityCone,
+    Unk3,
+    Unk4,
+    Unk5,
+    Unk6,
+    Unk7,
+    VelocityBox,
+    Unk9,
+    UnkA,
+    UnkB,
+    VelocityCylinder,
 };
 
-struct BurstEmitterGraph {
-    BurstEmitterGraphPoint points[10];
-};
-
-struct BurstEmitter {
-    BurstEmitterGraph graph;
-    u32 unk1;
-    u32 unk2;
-    u32 unk3;
-} [[color("FF0000")]];
-
-struct RateEmitter {
-    float initialRateMin;
-    float initialRateMax;
-    Graph rateGraph[2];
-}[[color("00FF00")]];
-
-struct UnknownEmitter0 {
-    u32 unk1;
-    u32 unk2;
-    u32 unk3;
-    float unk4;
-    Graph emitterGraph[2];
-}[[color("0000FF")]];
-
-struct UnknownEmitter2 {
-    padding[176];
-};
-
-struct UnknownEmitter3 {
-    u32 unk1[4];
-    Graph emitterGraph[2];
-    u32 unk2[4];
-    float unk3[3];
-    //u32 unk4[3];
-}[[color("FF00FF")]];
-
-struct UnknownEmitter4 {
-    padding[248];
-};
-
-struct Emitter {
-    EmitterType emitterType;
-    if (emitterType == EmitterType::Burst){
-        BurstEmitter e;
-    } else if (emitterType == EmitterType::Rate){
-        RateEmitter e;
-    } else if (emitterType == EmitterType::unk0){
-        UnknownEmitter0 e;
-    } else if (emitterType == EmitterType::unk1){
-        u32 pad[4];
-    } else if (emitterType == EmitterType::unk2){
-        UnknownEmitter2 e;
-    } else if (emitterType == EmitterType::unk3){
-        UnknownEmitter3 e;
-    } else if (emitterType == EmitterType::unk4){
-        UnknownEmitter4 e;
-    }
-    if (std::mem::read_unsigned($, 4) == 0xFFFFFFFF) {
-        u32 end[2] [[hidden]];
-    } else {
-        
-    }
-};
-
-struct MeshVisualizer {
-    u64 unitID;
-    u64 meshID;
-    u64 materialID;
-    u32 visualizerData[56];
-};
-
-struct UnknownVisualizer4 {
-    u64 materialID;
-    u32 visualizerData[62];
-};
-struct UnknownVisualizer3 {
-    u32 data[2];
-    u64 materialID;
-    u32 visualizerData[58];
-};
-
-struct BillboardVisualizer {
-    u32 unk1;
-    u32 unk2;
-    u64 materialID;
-    u32 visualizerData[60];
-};
-
-struct LightVisualizer {
-    u32 visualizerData[64];
-};
-
-struct Visualizer {
-    //u32 unk;
-    VisualizerType type;
-    if (type == VisualizerType::Billboard){
-        BillboardVisualizer v;
-    } else if (type == VisualizerType::Light){
-        LightVisualizer v;
-    } else if (type == VisualizerType::Mesh){
-        MeshVisualizer v;
-    } else if (type == VisualizerType::Unknown4){
-        UnknownVisualizer4 v;
-    } else if (type == VisualizerType::Unknown3){
-        UnknownVisualizer3 v;
-    }
-};
-
-struct Color {
-    float r;
-    float g;
-    float b;
-};
-
-struct ColorGraph {
-    GraphValue xArray[10];
-    Color yArray[10];
-} [[hex::visualize("scatter_plot", xArray, yArray)]];
-
-struct ComponentList {
-    u32 size = parent.emitterOffset - parent.componentListOffset + 20;
-    u8 componentList[size];
-};
-
-struct GraphComponent {
-    u32 unk1[4];
-    Graph componentGraph[2];
-    u32 unk2[2];
-} [[color("00FFFF")]];
-
-struct ColorGraphComponent {
-    u32 unk1[2];
-    Graph scaleGraph[2] [[color("FF0000")]];
-    Graph opacityGraph[2] [[color("00FF00")]];
-    ColorGraph colorGraph [[color("0000FF")]];
-    u32 end[4] [[color("0000FF")]];
-};
-
-struct ColorGraphComponentNoScale {
-    u32 unk1[2];
-    Graph opacityGraph[2] [[color("00FF00")]];
-    ColorGraph colorGraph [[color("0000FF")]];
-    u32 end[4] [[color("0000FF")]];
-};
-
-struct PadComponent {
-    //padding[4];
-};
-
-struct BasicComponent {
-    padding[12];
-};
-
-struct FloatComponent {
-    u32 unk1[2];
-    float unk2[4];
-};
-
-fn valid_component_type(u32 component_type) {
-    if (component_type == 0x04) return 1;
-    if (component_type == 0x05) return 1;
-    if (component_type == 0x0F) return 1;
-    if (component_type == 0x0B) return 1;
-    return 0;
+enum ControllerType : u32 {
+    Luminance = 40,
+    Life = 36,
 };
 
 struct Component {
-    if (valid_component_type(std::mem::read_unsigned($, 4))){
-        ComponentType componentType;
-    } else{
-        u32 componentType [[hidden]];
-    }
-    if (componentType == 0x04 && std::mem::read_unsigned($, 1) >= 0x20){
-        GraphComponent c;
-    } else if (componentType == 0x05 && std::mem::read_unsigned($, 1) >= 0x20){
-        ColorGraphComponent c;
-    } else if (componentType == 0x0F && std::mem::read_unsigned($, 1) >= 0x20){
-        ColorGraphComponentNoScale c;
-    } else if (componentType == 0x0B){
-        FloatComponent c;
-    } else if (componentType == 0x00){
-        //pass
-    }else if (componentType == 0x11){
-        if ($ + 284 < parent.startOffset + parent.particleSystemSize) {
-            padding[284];
+    ControllerFormat format;
+    ControllerType type;
+    match(format) {
+        (ControllerFormat::MinMax): {
+            float min, max;
         }
-    } else {
-        //BasicComponent c;
+        (ControllerFormat::VelocityCone): {
+            float minVelocity, maxVelocity;
+            float minTheta, maxTheta;
+            Vector3 axis;
+        }
+        (ControllerFormat::Unk3): {
+            u32 unkInts[2];
+        }
+        (ControllerFormat::Unk4): {
+            Vector3 unkVectors[2];
+        }
+        (ControllerFormat::Unk6): {
+            u32 unk1;
+        }
+        (ControllerFormat::Unk7): {
+            u32 unkInts[6];
+        }
+        (ControllerFormat::VelocityBox): {
+            Vector3 min;
+            Vector3 max;
+        }
+        (ControllerFormat::VelocityCylinder): {
+            u32 unkInt2;
+            float minRadial, maxRadial;
+            float minZ, maxZ;
+            float minAngular, maxAngular;
+        }
+        (_): std::print("Unknown controller format {} at index {}\n", format, std::core::array_index());
     }
 };
 
-struct ParticleEffectVariable {
-    str color = "000000";
-    if (count % 3 == 0) {
-        color = "FF0000";
-    } else if (count % 3 == 1) {
-        color = "00FF00";
-    } else {
-        color = "0000FF";
+enum EmitterType : u32 {
+    Unk0,
+    Rate = 11,
+    Burst,
+};
+
+struct ZeroEmitter {
+    u32 unk1, unk2;
+    if(magic == 0x73) {
+        u32 unk3, unk4, unk5;
     }
-    coloredVariable<u32,color> nameHash;
-    u32 offset = $;
-    $ = $ + 4 * (parent.numVariables-count-1) + 12 * (count);
-    coloredVariable<float,color> x;
-    coloredVariable<float,color> y;
-    coloredVariable<float,color> z;
-    if (count < parent.numVariables-1) {
-        $ = offset + 4 * count;
+};
+
+struct BurstEmitter {
+    Pair<float, u32> timeAmounts[10];
+};
+
+struct RateEmitter {
+    float min, max;
+    XYGraph changeOverTime;
+    if(magic == 0x73) {
+        XYGraph unkGraph;
+        u32 unknown[4];
+        padding[4];
     }
-    count = count + 1;
+};
+
+struct Emitter {
+    EmitterType type;
+    match(type) {
+        (EmitterType::Unk0): ZeroEmitter emitter;
+        (EmitterType::Rate): RateEmitter emitter;
+        (EmitterType::Burst): BurstEmitter emitter;
+        (_): std::print("Unknown emitter type {}", type);
+    }
+};
+
+enum VisualizerType : u32 {
+    Billboard,
+    Light,
+    Mesh,
+    Unk3,
+    Trail,
+};
+
+struct BillboardVisualizer {
+    u32 unk0, unk1;
+    MurmurHash material;
+};
+
+struct MeshVisualizer {
+    MurmurHash unit;
+    ThinMurmurHash mesh;
+    padding[4];
+    MurmurHash material;
+};
+
+struct TrailVisualizer {
+    MurmurHash material;
+};
+
+struct Visualizer {
+    VisualizerType type;
+    match(type) {
+        (VisualizerType::Billboard): BillboardVisualizer visualizer;
+        (VisualizerType::Mesh): MeshVisualizer visualizer;
+        (VisualizerType::Trail): TrailVisualizer visualizer;
+        (_): std::print("Unimplemented visualizer type {}", type);
+    }
+    u32 unkValues[51];
+    u32 unkint1;
+    u32 unkCount;
+    u32 unkOffset;
+    u32 unkOffset2;
+    u32 unkCount3;
+    u32 unkOffset3;
+    u32 totalSize;
+    padding[totalSize - sizeof(this)];
 };
 
 struct ParticleSystem {
-    u32 startOffset = $;
-    u32 maxNumParticles;
+    u64 base = $;
+    u32 maxParticleCount;
     u32 numComponents;
-    u32 unk2;
-    u32 componentBitFlags[numComponents];
-    padding[64-4*numComponents];
-    u32 unk3;
-    u32 unk4;
-    padding[8];
-    u32 unk5;
+    u32 unkInt;
+    if(magic == 0x73) {
+        u32 componentBitFlags[16];
+    } else {
+        u32 componentBitFlags[8];
+    }
+    s32 unkInt2;
+    s32 unkInt3;
+
+    s32 unkInt4; // 4/5 might just be padding
+    s32 unkInt5;
+
+    u32 unkInt6;
+    s32 unkInt7;
+    u32 unkInt8;
+    s32 unkInt9;
+    ThinMurmurHash type1;
+    ThinMurmurHash type2;
     padding[4];
-    u32 unk6;
-    padding[4];
-    u32 type1;
-    u32 type2;
-    padding[4];
-    
     Matrix4 transform;
-    float unknown[11];
-    u32 unk7;
+    if (magic == 0x73) {
+        float unknownFloats[11];
+    } else {
+        float unknownFloats[3];
+    }
+
+    u32 componentListCount;
     u32 componentListOffset;
-    u32 unk8;
+    if (componentListCount > 0) {
+        Component components[componentListCount] @ base + componentListOffset;
+    }
+
+    u32 emitterCount;
     u32 emitterOffset;
-    u32 unk9;
-    u32 unk10;
+    if (emitterCount > 0) {
+        Emitter emitters[emitterCount] @ base + emitterOffset;
+    }
+
+    u32 unknown;
+    u32 visualizerCount;
     u32 visualizerOffset;
-    u32 particleSystemSize;
-    if (visualizerOffset == particleSystemSize) {
-      $ = startOffset + particleSystemSize;
-      //trail spawner for another particle system???
-      continue;
+    if (visualizerCount > 0) {
+        Visualizer visualizers[visualizerCount] @ base + visualizerOffset;
     }
-    
-    $ = startOffset + emitterOffset + 20;
-    Emitter emitters[while(std::mem::read_unsigned($, 4) != 0x01)];
-    
-    
-    $ = startOffset + componentListOffset;
-    if (unk3 == 0xFFFFFFFF) { //non-rendering particle system
-        $ = startOffset + particleSystemSize;
-        continue;
+
+    u32 totalSize;
+    if(magic == 0x73) {
+        u32 unk2;
     }
-    ComponentList componentList;
-    $ = startOffset + visualizerOffset;
-    Visualizer v;
-    Component components[while($ + 16 <= startOffset + particleSystemSize )];
-    $ = startOffset + particleSystemSize;
-    
+    padding[totalSize - sizeof(this)];
 };
 
-struct ParticleEffect {
-    u32 magic;
+struct Particle {
+    u32 _magic;
+    magic = _magic;
     float minLifetime;
     float maxLifetime;
-    float unk1;
-    u32 unk2;
-    u32 numVariables;
-    u32 numParticleSystems;
-    u32 unkNumItems;
-    padding[48];
-    count = 0;
-    ParticleEffectVariable variables[numVariables];
-    ParticleSystem particles[numParticleSystems];
+    float unkFloat;
+    u32 unkInt1;
+    u32 variableCount;
+    u32 particleSystemCount;
+    if(magic == 0x31) {
+        ThinMurmurHash variableNames[variableCount];
+        Vector3 variableValues[variableCount];
+    }
+    if(magic == 0x73) {
+        u32 unkItemCount;
+        padding[48];
+        ThinMurmurHash variableNames[variableCount];
+        Vector3 variableValues[variableCount];
+    }
+    ParticleSystem systems[particleSystemCount];
 };
 
-u32 count;
-
-ParticleEffect pe @ 0x00;
+Particle particle @ 0x0;
