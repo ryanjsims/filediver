@@ -35,6 +35,7 @@ import (
 	extr_level "github.com/xypwn/filediver/extractor/level"
 	extr_material "github.com/xypwn/filediver/extractor/material"
 	extr_package "github.com/xypwn/filediver/extractor/package"
+	extr_particle "github.com/xypwn/filediver/extractor/particle"
 	extr_prefab "github.com/xypwn/filediver/extractor/prefab"
 	extr_shading_environment "github.com/xypwn/filediver/extractor/shading_environment"
 	extr_speedtree "github.com/xypwn/filediver/extractor/speedtree"
@@ -900,6 +901,8 @@ func (a *App) ExtractFile(ctx context.Context, id stingray.FileID, outDir string
 			extr = extr_bones.ExtractBonesJSON
 		case "ah_bin":
 			extr = extr_ah_bin.ExtractAhBinJSON
+		case "particles":
+			extr = extr_particle.ExtractParticleJSON
 		case "entity":
 			extr = extr_entity.ExtractEntityJSON
 		case "shading_environment":
