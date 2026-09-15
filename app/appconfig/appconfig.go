@@ -99,6 +99,9 @@ type Config struct {
 	Level struct {
 		Format string `cfg:"options=model,json,raw"`
 	} `cfg:"tags=t:level help='Level specific settings'"`
+	Particle struct {
+		Format string `cfg:"options=json,raw"`
+	} `cfg:"tags=t:particles help='Particle specific settings'"`
 	Prefab struct {
 		Format string `cfg:"options=model,json,raw"`
 	} `cfg:"tags=t:prefab help='Prefab specific settings'"`
