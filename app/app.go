@@ -35,7 +35,7 @@ import (
 	extr_level "github.com/xypwn/filediver/extractor/level"
 	extr_material "github.com/xypwn/filediver/extractor/material"
 	extr_package "github.com/xypwn/filediver/extractor/package"
-	extr_particle "github.com/xypwn/filediver/extractor/particle"
+	extr_particle "github.com/xypwn/filediver/extractor/particles"
 	extr_prefab "github.com/xypwn/filediver/extractor/prefab"
 	extr_shading_environment "github.com/xypwn/filediver/extractor/shading_environment"
 	extr_speedtree "github.com/xypwn/filediver/extractor/speedtree"

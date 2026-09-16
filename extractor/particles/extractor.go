@@ -1,4 +1,4 @@
-package particle
+package particles
 
 import (
 	"encoding/json"
@@ -6,7 +6,7 @@ import (
 	"github.com/go-gl/mathgl/mgl32"
 	"github.com/xypwn/filediver/extractor"
 	"github.com/xypwn/filediver/stingray"
-	"github.com/xypwn/filediver/stingray/particle"
+	"github.com/xypwn/filediver/stingray/particles"
 	"github.com/xypwn/filediver/util"
 )
 
@@ -56,7 +56,7 @@ type SimpleParticleSystemHeader struct {
 
 type SimpleParticleSystem struct {
 	SimpleParticleSystemHeader `json:"header"`
-	Controllers                []particle.Controller `json:"controllers"`
+	Controllers                []particles.Controller `json:"controllers"`
 }
 
 type SimpleParticle struct {
@@ -70,7 +70,7 @@ func ExtractParticleJSON(ctx *extractor.Context) error {
 	if err != nil {
 		return err
 	}
-	particleData, err := particle.Load(r)
+	particleData, err := particles.Load(r)
 	if err != nil {
 		return err
 	}
