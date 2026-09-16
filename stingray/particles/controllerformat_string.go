@@ -11,7 +11,7 @@ func _() {
 	_ = x[ControllerFormat_Unk0-0]
 	_ = x[ControllerFormat_MinMax-1]
 	_ = x[ControllerFormat_Cone-2]
-	_ = x[ControllerFormat_Unk3-3]
+	_ = x[ControllerFormat_Sphere-3]
 	_ = x[ControllerFormat_Box-4]
 	_ = x[ControllerFormat_Unk5-5]
 	_ = x[ControllerFormat_Unk6-6]
@@ -33,9 +33,9 @@ func _() {
 	_ = x[ControllerFormat_Unk22-22]
 }
 
-const _ControllerFormat_name = "ControllerFormat_Unk0ControllerFormat_MinMaxControllerFormat_ConeControllerFormat_Unk3ControllerFormat_BoxControllerFormat_Unk5ControllerFormat_Unk6ControllerFormat_Unk7ControllerFormat_Unk8ControllerFormat_Unk9ControllerFormat_Unk10ControllerFormat_Unk11ControllerFormat_CylinderControllerFormat_Unk13ControllerFormat_Unk14ControllerFormat_Unk15ControllerFormat_Unk16ControllerFormat_Unk17ControllerFormat_Unk18ControllerFormat_Unk19ControllerFormat_Unk20ControllerFormat_Unk21ControllerFormat_Unk22"
+const _ControllerFormat_name = "ControllerFormat_Unk0ControllerFormat_MinMaxControllerFormat_ConeControllerFormat_SphereControllerFormat_BoxControllerFormat_Unk5ControllerFormat_Unk6ControllerFormat_Unk7ControllerFormat_Unk8ControllerFormat_Unk9ControllerFormat_Unk10ControllerFormat_Unk11ControllerFormat_CylinderControllerFormat_Unk13ControllerFormat_Unk14ControllerFormat_Unk15ControllerFormat_Unk16ControllerFormat_Unk17ControllerFormat_Unk18ControllerFormat_Unk19ControllerFormat_Unk20ControllerFormat_Unk21ControllerFormat_Unk22"
 
-var _ControllerFormat_index = [...]uint16{0, 21, 44, 65, 86, 106, 127, 148, 169, 190, 211, 233, 255, 280, 302, 324, 346, 368, 390, 412, 434, 456, 478, 500}
+var _ControllerFormat_index = [...]uint16{0, 21, 44, 65, 88, 108, 129, 150, 171, 192, 213, 235, 257, 282, 304, 326, 348, 370, 392, 414, 436, 458, 480, 502}
 
 func (i ControllerFormat) String() string {
 	idx := int(i) - 0

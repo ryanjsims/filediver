@@ -28,7 +28,7 @@ type SimpleVariable struct {
 
 type SimpleParticleSystemHeader struct {
 	SpawnLimit        uint32           `json:"spawn_limit"`
-	NumControllers    uint32           `json:"num_components"`
+	NumControllers    uint32           `json:"num_controllers"`
 	UnkInt1           uint32           `json:"unk_int1"`
 	ComponentFlags    []uint32         `json:"component_flags"`
 	UnkInt2           int32            `json:"unk_int2"`
