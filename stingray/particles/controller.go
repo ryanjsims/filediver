@@ -34,6 +34,12 @@ const (
 	ControllerFormat_Unk20
 	ControllerFormat_Unk21
 	ControllerFormat_Unk22
+	ControllerFormat_Unk23
+	ControllerFormat_Unk24
+	ControllerFormat_Unk25
+	ControllerFormat_Unk26
+	ControllerFormat_Unk27
+	ControllerFormat_Unk28
 )
 
 func (c ControllerFormat) MarshalText() ([]byte, error) {
@@ -102,7 +108,11 @@ type BoxController struct {
 	Max              util.Vec3JSON `json:"max"`
 }
 
-// Might be a cylinder controller?
+type Unk5Controller struct {
+	ControllerHeader `json:"header"`
+	UnkFloats        [7]util.FloatJSON `json:"unk_floats"`
+}
+
 type Unk6Controller struct {
 	ControllerHeader `json:"header"`
 	UnkInts          [2]uint32 `json:"unk_ints"`
@@ -119,6 +129,26 @@ type Unk8Controller struct {
 	Max              util.Vec3JSON `json:"max"`
 }
 
+type Unk9Controller struct {
+	ControllerHeader `json:"header"`
+	UnkVectors       [2]util.Vec3JSON `json:"unk_vectors"`
+	Graphs           [2]Graph         `json:"graphs"`
+	UnkInts          [4]int32         `json:"unk_ints"`
+}
+
+type Unk10Controller struct {
+	ControllerHeader `json:"header"`
+	UnkInt           int32             `json:"unk_int"`
+	UnkFloats        [5]util.FloatJSON `json:"unk_floats"`
+	UnkInt2          int32             `json:"unk_int2"`
+}
+
+type Unk11Controller struct {
+	ControllerHeader `json:"header"`
+	UnkVectors       [2]util.Vec3JSON `json:"unk_vectors"`
+	UnkInts          uint32           `json:"unk_int"`
+}
+
 type CylinderController struct {
 	ControllerHeader `json:"header"`
 	MinRadial        util.FloatJSON `json:"min_radial"`
@@ -128,13 +158,6 @@ type CylinderController struct {
 	MinAngular       util.FloatJSON `json:"min_angular"`
 	MaxAngular       util.FloatJSON `json:"max_angular"`
 	UnkInts          [3]int32       `json:"unk_ints"`
-}
-
-type Unk11Controller struct {
-	ControllerHeader `json:"header"`
-	UnkVectors       [2]util.Vec3JSON  `json:"unk_vectors"`
-	UnkInts          [3]uint32         `json:"unk_ints"`
-	UnkFloats        [2]util.FloatJSON `json:"unk_floats"`
 }
 
 type Unk13Controller struct {
@@ -158,15 +181,49 @@ type Unk14Controller struct {
 	UnkInts          [4]int32          `json:"unk_ints"`
 }
 
+type Unk15Controller struct {
+	ControllerHeader `json:"header"`
+	UnkInts          [2]int32 `json:"unk_ints"`
+}
+
 type Unk18Controller struct {
 	ControllerHeader `json:"header"`
 	UnkFloat         util.FloatJSON `json:"unk_float"`
+}
+
+type Unk19Controller struct {
+	ControllerHeader `json:"header"`
+	UnkVector        util.Vec3JSON `json:"unk_vector"`
 }
 
 type Unk22Controller struct {
 	ControllerHeader `json:"header"`
 	UnkFloats        [2]util.FloatJSON `json:"unk_floats"`
 	UnkVector        util.Vec3JSON     `json:"unk_vector"`
+}
+
+type Unk24Controller struct {
+	ControllerHeader `json:"header"`
+	UnkInts          [2]int32          `json:"unk_ints"`
+	UnkFloats        [9]util.FloatJSON `json:"unk_floats"`
+}
+
+type Unk25Controller struct {
+	ControllerHeader `json:"header"`
+	UnkInt           int32              `json:"unk_int"`
+	UnkFloats        [11]util.FloatJSON `json:"unk_floats"`
+}
+
+type Unk26Controller struct {
+	ControllerHeader `json:"header"`
+	UnkFloat         util.FloatJSON `json:"unk_float"`
+}
+
+type Unk28Controller struct {
+	ControllerHeader `json:"header"`
+	UnkInt           int32             `json:"unk_int"`
+	UnkFloats        [2]util.FloatJSON `json:"unk_floats"`
+	Graphs           [2]Graph          `json:"graphs"`
 }
 
 type UnimplementedController struct {
@@ -205,12 +262,12 @@ func ReadController(r io.ReadSeeker, format ControllerFormat) (Controller, error
 			return nil, fmt.Errorf("Reading controller of format %v: %v", format, err)
 		}
 		return &controller, nil
-	// case ControllerFormat_Unk5:
-	// 	var controller Unk5Controller
-	// 	if err := binary.Read(r, binary.LittleEndian, &controller); err != nil {
-	// 		return nil, fmt.Errorf("Reading controller of format %v: %v", format, err)
-	// 	}
-	// 	return &controller, nil
+	case ControllerFormat_Unk5:
+		var controller Unk5Controller
+		if err := binary.Read(r, binary.LittleEndian, &controller); err != nil {
+			return nil, fmt.Errorf("Reading controller of format %v: %v", format, err)
+		}
+		return &controller, nil
 	case ControllerFormat_Unk6:
 		var controller Unk6Controller
 		if err := binary.Read(r, binary.LittleEndian, &controller); err != nil {
@@ -229,18 +286,18 @@ func ReadController(r io.ReadSeeker, format ControllerFormat) (Controller, error
 			return nil, fmt.Errorf("Reading controller of format %v: %v", format, err)
 		}
 		return &controller, nil
-	// case ControllerFormat_Unk9:
-	// 	var controller Unk9Controller
-	// 	if err := binary.Read(r, binary.LittleEndian, &controller); err != nil {
-	// 		return nil, fmt.Errorf("Reading controller of format %v: %v", format, err)
-	// 	}
-	// 	return &controller, nil
-	// case ControllerFormat_Unk10:
-	// 	var controller Unk10Controller
-	// 	if err := binary.Read(r, binary.LittleEndian, &controller); err != nil {
-	// 		return nil, fmt.Errorf("Reading controller of format %v: %v", format, err)
-	// 	}
-	// 	return &controller, nil
+	case ControllerFormat_Unk9:
+		var controller Unk9Controller
+		if err := binary.Read(r, binary.LittleEndian, &controller); err != nil {
+			return nil, fmt.Errorf("Reading controller of format %v: %v", format, err)
+		}
+		return &controller, nil
+	case ControllerFormat_Unk10:
+		var controller Unk10Controller
+		if err := binary.Read(r, binary.LittleEndian, &controller); err != nil {
+			return nil, fmt.Errorf("Reading controller of format %v: %v", format, err)
+		}
+		return &controller, nil
 	case ControllerFormat_Unk11:
 		var controller Unk11Controller
 		if err := binary.Read(r, binary.LittleEndian, &controller); err != nil {
@@ -265,14 +322,50 @@ func ReadController(r io.ReadSeeker, format ControllerFormat) (Controller, error
 			return nil, fmt.Errorf("Reading controller of format %v: %v", format, err)
 		}
 		return &controller, nil
+	case ControllerFormat_Unk15:
+		var controller Unk15Controller
+		if err := binary.Read(r, binary.LittleEndian, &controller); err != nil {
+			return nil, fmt.Errorf("Reading controller of format %v: %v", format, err)
+		}
+		return &controller, nil
 	case ControllerFormat_Unk18:
 		var controller Unk18Controller
 		if err := binary.Read(r, binary.LittleEndian, &controller); err != nil {
 			return nil, fmt.Errorf("Reading controller of format %v: %v", format, err)
 		}
 		return &controller, nil
+	case ControllerFormat_Unk19:
+		var controller Unk19Controller
+		if err := binary.Read(r, binary.LittleEndian, &controller); err != nil {
+			return nil, fmt.Errorf("Reading controller of format %v: %v", format, err)
+		}
+		return &controller, nil
 	case ControllerFormat_Unk22:
 		var controller Unk22Controller
+		if err := binary.Read(r, binary.LittleEndian, &controller); err != nil {
+			return nil, fmt.Errorf("Reading controller of format %v: %v", format, err)
+		}
+		return &controller, nil
+	case ControllerFormat_Unk24:
+		var controller Unk24Controller
+		if err := binary.Read(r, binary.LittleEndian, &controller); err != nil {
+			return nil, fmt.Errorf("Reading controller of format %v: %v", format, err)
+		}
+		return &controller, nil
+	case ControllerFormat_Unk25:
+		var controller Unk25Controller
+		if err := binary.Read(r, binary.LittleEndian, &controller); err != nil {
+			return nil, fmt.Errorf("Reading controller of format %v: %v", format, err)
+		}
+		return &controller, nil
+	case ControllerFormat_Unk26:
+		var controller Unk26Controller
+		if err := binary.Read(r, binary.LittleEndian, &controller); err != nil {
+			return nil, fmt.Errorf("Reading controller of format %v: %v", format, err)
+		}
+		return &controller, nil
+	case ControllerFormat_Unk28:
+		var controller Unk28Controller
 		if err := binary.Read(r, binary.LittleEndian, &controller); err != nil {
 			return nil, fmt.Errorf("Reading controller of format %v: %v", format, err)
 		}
