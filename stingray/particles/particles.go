@@ -33,7 +33,7 @@ const (
 	ControllerFormat_Unk0 ControllerFormat = iota
 	ControllerFormat_MinMax
 	ControllerFormat_Cone
-	ControllerFormat_Unk3
+	ControllerFormat_Sphere
 	ControllerFormat_Box
 	ControllerFormat_Unk5
 	ControllerFormat_Unk6
@@ -64,8 +64,10 @@ func (c ControllerFormat) MarshalText() ([]byte, error) {
 type ControllerType uint32
 
 const (
-	ControllerType_Luminance ControllerType = 40
+	ControllerType_Position  ControllerType = 0
+	ControllerType_Velocity  ControllerType = 16
 	ControllerType_Life      ControllerType = 36
+	ControllerType_Luminance ControllerType = 40
 )
 
 func (c ControllerType) MarshalText() ([]byte, error) {
@@ -107,9 +109,10 @@ type ConeController struct {
 	UnkInts     [4]int32       `json:"unk_ints"`
 }
 
-type Unk3Controller struct {
+type SphereController struct {
 	ControllerHeader `json:"header"`
-	UnkFloats        [2]util.FloatJSON `json:"unk_floats"`
+	MinRadius        util.FloatJSON `json:"min_radius"`
+	MaxRadius        util.FloatJSON `json:"max_radius"`
 }
 
 type BoxController struct {
@@ -151,6 +154,18 @@ type Unk11Controller struct {
 	UnkVectors       [2]util.Vec3JSON  `json:"unk_vectors"`
 	UnkInts          [3]uint32         `json:"unk_ints"`
 	UnkFloats        [2]util.FloatJSON `json:"unk_floats"`
+}
+
+type Unk13Controller struct {
+	ControllerHeader `json:"header"`
+	MinRadial        util.FloatJSON `json:"min_radial"`
+	MaxRadial        util.FloatJSON `json:"max_radial"`
+	MinZ             util.FloatJSON `json:"min_z"`
+	MaxZ             util.FloatJSON `json:"max_z"`
+	MinAngular       util.FloatJSON `json:"min_angular"`
+	MaxAngular       util.FloatJSON `json:"max_angular"`
+	UnkInts          [3]int32       `json:"unk_ints"`
+	UnkFloat         util.FloatJSON `json:"unk_float"`
 }
 
 type Unk14Controller struct {
@@ -197,8 +212,8 @@ func ReadController(r io.ReadSeeker, format ControllerFormat) (Controller, error
 			return nil, fmt.Errorf("Reading controller of format %v: %v", format, err)
 		}
 		return &controller, nil
-	case ControllerFormat_Unk3:
-		var controller Unk3Controller
+	case ControllerFormat_Sphere:
+		var controller SphereController
 		if err := binary.Read(r, binary.LittleEndian, &controller); err != nil {
 			return nil, fmt.Errorf("Reading controller of format %v: %v", format, err)
 		}
@@ -247,6 +262,12 @@ func ReadController(r io.ReadSeeker, format ControllerFormat) (Controller, error
 	// 	return &controller, nil
 	case ControllerFormat_Unk11:
 		var controller Unk11Controller
+		if err := binary.Read(r, binary.LittleEndian, &controller); err != nil {
+			return nil, fmt.Errorf("Reading controller of format %v: %v", format, err)
+		}
+		return &controller, nil
+	case ControllerFormat_Unk13:
+		var controller Unk13Controller
 		if err := binary.Read(r, binary.LittleEndian, &controller); err != nil {
 			return nil, fmt.Errorf("Reading controller of format %v: %v", format, err)
 		}

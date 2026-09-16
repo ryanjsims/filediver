@@ -8,21 +8,29 @@ func _() {
 	// An "invalid array index" compiler error signifies that the constant values have changed.
 	// Re-run the stringer command to generate them again.
 	var x [1]struct{}
-	_ = x[ControllerType_Luminance-40]
+	_ = x[ControllerType_Position-0]
+	_ = x[ControllerType_Velocity-16]
 	_ = x[ControllerType_Life-36]
+	_ = x[ControllerType_Luminance-40]
 }
 
 const (
-	_ControllerType_name_0 = "ControllerType_Life"
-	_ControllerType_name_1 = "ControllerType_Luminance"
+	_ControllerType_name_0 = "ControllerType_Position"
+	_ControllerType_name_1 = "ControllerType_Velocity"
+	_ControllerType_name_2 = "ControllerType_Life"
+	_ControllerType_name_3 = "ControllerType_Luminance"
 )
 
 func (i ControllerType) String() string {
 	switch {
-	case i == 36:
+	case i == 0:
 		return _ControllerType_name_0
-	case i == 40:
+	case i == 16:
 		return _ControllerType_name_1
+	case i == 36:
+		return _ControllerType_name_2
+	case i == 40:
+		return _ControllerType_name_3
 	default:
 		return "ControllerType(" + strconv.FormatInt(int64(i), 10) + ")"
 	}
