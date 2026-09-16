@@ -1,4 +1,4 @@
-package particle
+package particles
 
 import (
 	"encoding/binary"
