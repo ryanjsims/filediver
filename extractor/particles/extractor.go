@@ -57,6 +57,7 @@ type SimpleParticleSystemHeader struct {
 type SimpleParticleSystem struct {
 	SimpleParticleSystemHeader `json:"header"`
 	Controllers                []particles.Controller `json:"controllers"`
+	Emitters                   []particles.Emitter    `json:"emitters"`
 }
 
 type SimpleParticle struct {
@@ -89,6 +90,14 @@ func ExtractParticleJSON(ctx *extractor.Context) error {
 		for _, val := range system.UnkFloats {
 			floats = append(floats, util.FloatJSON(val))
 		}
+		emitters := make([]particles.Emitter, 0)
+		for _, emitter := range system.Emitters {
+			if emitter.CanSimplify() {
+				emitters = append(emitters, emitter.Simplify(ctx.LookupHash, ctx.LookupThinHash))
+				continue
+			}
+			emitters = append(emitters, emitter)
+		}
 		particleSystems = append(particleSystems, SimpleParticleSystem{
 			SimpleParticleSystemHeader: SimpleParticleSystemHeader{
 				SpawnLimit:        system.SpawnLimit,
@@ -118,6 +127,7 @@ func ExtractParticleJSON(ctx *extractor.Context) error {
 				UnkInt11:          system.UnkInt11,
 			},
 			Controllers: system.Controllers,
+			Emitters:    emitters,
 		})
 	}
 
