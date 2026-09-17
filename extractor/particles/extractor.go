@@ -2,6 +2,7 @@ package particles
 
 import (
 	"encoding/json"
+	"errors"
 
 	"github.com/go-gl/mathgl/mgl32"
 	"github.com/xypwn/filediver/extractor"
@@ -58,6 +59,7 @@ type SimpleParticleSystem struct {
 	SimpleParticleSystemHeader `json:"header"`
 	Controllers                []particles.Controller `json:"controllers"`
 	Emitters                   []particles.Emitter    `json:"emitters"`
+	Visualizers                []particles.Visualizer `json:"visualizers"`
 }
 
 type SimpleParticle struct {
@@ -98,6 +100,15 @@ func ExtractParticleJSON(ctx *extractor.Context) error {
 			}
 			emitters = append(emitters, emitter)
 		}
+		visualizers := make([]particles.Visualizer, 0)
+		for _, visualizer := range system.Visualizers {
+			simplified, err := visualizer.Simplify(ctx.LookupHash, ctx.LookupThinHash)
+			if errors.Is(err, errors.ErrUnsupported) {
+				visualizers = append(visualizers, visualizer)
+				continue
+			}
+			visualizers = append(visualizers, simplified)
+		}
 		particleSystems = append(particleSystems, SimpleParticleSystem{
 			SimpleParticleSystemHeader: SimpleParticleSystemHeader{
 				SpawnLimit:        system.SpawnLimit,
@@ -128,6 +139,7 @@ func ExtractParticleJSON(ctx *extractor.Context) error {
 			},
 			Controllers: system.Controllers,
 			Emitters:    emitters,
+			Visualizers: visualizers,
 		})
 	}
 
