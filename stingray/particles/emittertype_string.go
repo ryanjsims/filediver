@@ -9,27 +9,53 @@ func _() {
 	// Re-run the stringer command to generate them again.
 	var x [1]struct{}
 	_ = x[EmitterType_Unk0-0]
+	_ = x[EmitterType_Unk1-1]
+	_ = x[EmitterType_Unk2-2]
+	_ = x[EmitterType_Acceleration-3]
+	_ = x[EmitterType_Unk4-4]
+	_ = x[EmitterType_Unk5-5]
+	_ = x[EmitterType_Unk6-6]
+	_ = x[EmitterType_Unk7-7]
+	_ = x[EmitterType_Unk8-8]
+	_ = x[EmitterType_Unk9-9]
+	_ = x[EmitterType_Unk10-10]
 	_ = x[EmitterType_Rate-11]
 	_ = x[EmitterType_Burst-12]
+	_ = x[EmitterType_Unk13-13]
+	_ = x[EmitterType_Unk14-14]
+	_ = x[EmitterType_Unk15-15]
+	_ = x[EmitterType_Unk16-16]
+	_ = x[EmitterType_Unk17-17]
+	_ = x[EmitterType_Unk18-18]
+	_ = x[EmitterType_Unk19-19]
+	_ = x[EmitterType_Unk20-20]
+	_ = x[EmitterType_Unk21-21]
+	_ = x[EmitterType_Unk22-22]
+	_ = x[EmitterType_Unk23-23]
+	_ = x[EmitterType_Unk24-24]
+	_ = x[EmitterType_Unk25-25]
+	_ = x[EmitterType_Unk26-26]
+	_ = x[EmitterType_Unk27-27]
+	_ = x[EmitterType_Unk28-28]
+	_ = x[EmitterType_Unk29-29]
+	_ = x[EmitterType_Unk30-30]
+	_ = x[EmitterType_Unk31-31]
+	_ = x[EmitterType_Unk32-32]
+	_ = x[EmitterType_Unk33-33]
+	_ = x[EmitterType_Unk34-34]
+	_ = x[EmitterType_Unk35-35]
+	_ = x[EmitterType_Unk36-36]
+	_ = x[EmitterType_Unk37-37]
 }
 
-const (
-	_EmitterType_name_0 = "EmitterType_Unk0"
-	_EmitterType_name_1 = "EmitterType_RateEmitterType_Burst"
-)
+const _EmitterType_name = "EmitterType_Unk0EmitterType_Unk1EmitterType_Unk2EmitterType_AccelerationEmitterType_Unk4EmitterType_Unk5EmitterType_Unk6EmitterType_Unk7EmitterType_Unk8EmitterType_Unk9EmitterType_Unk10EmitterType_RateEmitterType_BurstEmitterType_Unk13EmitterType_Unk14EmitterType_Unk15EmitterType_Unk16EmitterType_Unk17EmitterType_Unk18EmitterType_Unk19EmitterType_Unk20EmitterType_Unk21EmitterType_Unk22EmitterType_Unk23EmitterType_Unk24EmitterType_Unk25EmitterType_Unk26EmitterType_Unk27EmitterType_Unk28EmitterType_Unk29EmitterType_Unk30EmitterType_Unk31EmitterType_Unk32EmitterType_Unk33EmitterType_Unk34EmitterType_Unk35EmitterType_Unk36EmitterType_Unk37"
 
-var (
-	_EmitterType_index_1 = [...]uint8{0, 16, 33}
-)
+var _EmitterType_index = [...]uint16{0, 16, 32, 48, 72, 88, 104, 120, 136, 152, 168, 185, 201, 218, 235, 252, 269, 286, 303, 320, 337, 354, 371, 388, 405, 422, 439, 456, 473, 490, 507, 524, 541, 558, 575, 592, 609, 626, 643}
 
 func (i EmitterType) String() string {
-	switch {
-	case i == 0:
-		return _EmitterType_name_0
-	case 11 <= i && i <= 12:
-		i -= 11
-		return _EmitterType_name_1[_EmitterType_index_1[i]:_EmitterType_index_1[i+1]]
-	default:
+	idx := int(i) - 0
+	if i < 0 || idx >= len(_EmitterType_index)-1 {
 		return "EmitterType(" + strconv.FormatInt(int64(i), 10) + ")"
 	}
+	return _EmitterType_name[_EmitterType_index[idx]:_EmitterType_index[idx+1]]
 }
