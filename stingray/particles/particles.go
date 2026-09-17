@@ -80,6 +80,21 @@ type VisualizerTrailer struct {
 func (v *VisualizerTrailer) Size() int64 {
 	return int64(v.TotalSize)
 }
+func (v *VisualizerTrailer) NumComponents() uint32 {
+	return v.ComponentCount
+}
+func (v *VisualizerTrailer) ComponentsOffset() int64 {
+	return int64(v.ComponentOffset)
+}
+
+type PhysicalVisualizerExtras struct {
+	UnkInt      uint32 `json:"padding_int"`
+	NamesOffset uint32 `json:"names_offset"`
+}
+
+func (v *PhysicalVisualizerExtras) GetNamesOffset() int64 {
+	return int64(v.NamesOffset)
+}
 
 type BillboardVisualizer struct {
 	VisualizerHeader
@@ -88,6 +103,7 @@ type BillboardVisualizer struct {
 	Material stingray.Hash
 	VisualizerMiddle
 	VisualizerTrailer
+	PhysicalVisualizerExtras
 }
 
 type SimpleBillboardVisualizer struct {
@@ -97,16 +113,18 @@ type SimpleBillboardVisualizer struct {
 	Material string `json:"material"`
 	VisualizerMiddle
 	VisualizerTrailer
+	PhysicalVisualizerExtras
 }
 
 func (v *BillboardVisualizer) Simplify(lookupHash func(stingray.Hash) string, _ func(stingray.ThinHash) string) (Visualizer, error) {
 	return &SimpleBillboardVisualizer{
-		VisualizerHeader:  v.VisualizerHeader,
-		UnkInt1:           v.UnkInt1,
-		UnkInt2:           v.UnkInt2,
-		Material:          lookupHash(v.Material),
-		VisualizerMiddle:  v.VisualizerMiddle,
-		VisualizerTrailer: v.VisualizerTrailer,
+		VisualizerHeader:         v.VisualizerHeader,
+		UnkInt1:                  v.UnkInt1,
+		UnkInt2:                  v.UnkInt2,
+		Material:                 lookupHash(v.Material),
+		VisualizerMiddle:         v.VisualizerMiddle,
+		VisualizerTrailer:        v.VisualizerTrailer,
+		PhysicalVisualizerExtras: v.PhysicalVisualizerExtras,
 	}, nil
 }
 
@@ -118,6 +136,7 @@ type MeshVisualizer struct {
 	Material stingray.Hash
 	VisualizerMiddle
 	VisualizerTrailer
+	PhysicalVisualizerExtras
 }
 
 type SimpleMeshVisualizer struct {
@@ -127,16 +146,18 @@ type SimpleMeshVisualizer struct {
 	Material string `json:"material"`
 	VisualizerMiddle
 	VisualizerTrailer
+	PhysicalVisualizerExtras
 }
 
 func (v *MeshVisualizer) Simplify(lookupHash func(stingray.Hash) string, lookupThinHash func(stingray.ThinHash) string) (Visualizer, error) {
 	return &SimpleMeshVisualizer{
-		VisualizerHeader:  v.VisualizerHeader,
-		Unit:              lookupHash(v.Unit),
-		Mesh:              lookupThinHash(v.Mesh),
-		Material:          lookupHash(v.Material),
-		VisualizerMiddle:  v.VisualizerMiddle,
-		VisualizerTrailer: v.VisualizerTrailer,
+		VisualizerHeader:         v.VisualizerHeader,
+		Unit:                     lookupHash(v.Unit),
+		Mesh:                     lookupThinHash(v.Mesh),
+		Material:                 lookupHash(v.Material),
+		VisualizerMiddle:         v.VisualizerMiddle,
+		VisualizerTrailer:        v.VisualizerTrailer,
+		PhysicalVisualizerExtras: v.PhysicalVisualizerExtras,
 	}, nil
 }
 
@@ -147,6 +168,7 @@ type Unk3Visualizer struct {
 	Material stingray.Hash
 	VisualizerMiddle
 	VisualizerTrailer
+	PhysicalVisualizerExtras
 }
 
 type SimpleUnk3Visualizer struct {
@@ -156,16 +178,18 @@ type SimpleUnk3Visualizer struct {
 	Material string `json:"material"`
 	VisualizerMiddle
 	VisualizerTrailer
+	PhysicalVisualizerExtras
 }
 
 func (v *Unk3Visualizer) Simplify(lookupHash func(stingray.Hash) string, lookupThinHash func(stingray.ThinHash) string) (Visualizer, error) {
 	return &SimpleUnk3Visualizer{
-		VisualizerHeader:  v.VisualizerHeader,
-		UnkInt1:           v.UnkInt1,
-		UnkInt2:           v.UnkInt2,
-		Material:          lookupHash(v.Material),
-		VisualizerMiddle:  v.VisualizerMiddle,
-		VisualizerTrailer: v.VisualizerTrailer,
+		VisualizerHeader:         v.VisualizerHeader,
+		UnkInt1:                  v.UnkInt1,
+		UnkInt2:                  v.UnkInt2,
+		Material:                 lookupHash(v.Material),
+		VisualizerMiddle:         v.VisualizerMiddle,
+		VisualizerTrailer:        v.VisualizerTrailer,
+		PhysicalVisualizerExtras: v.PhysicalVisualizerExtras,
 	}, nil
 }
 
@@ -174,6 +198,7 @@ type TrailVisualizer struct {
 	Material stingray.Hash
 	VisualizerMiddle
 	VisualizerTrailer
+	PhysicalVisualizerExtras
 }
 
 type SimpleTrailVisualizer struct {
@@ -181,14 +206,16 @@ type SimpleTrailVisualizer struct {
 	Material string `json:"trail_material"`
 	VisualizerMiddle
 	VisualizerTrailer
+	PhysicalVisualizerExtras
 }
 
 func (v *TrailVisualizer) Simplify(lookupHash func(stingray.Hash) string, _ func(stingray.ThinHash) string) (Visualizer, error) {
 	return &SimpleTrailVisualizer{
-		VisualizerHeader:  v.VisualizerHeader,
-		Material:          lookupHash(v.Material),
-		VisualizerMiddle:  v.VisualizerMiddle,
-		VisualizerTrailer: v.VisualizerTrailer,
+		VisualizerHeader:         v.VisualizerHeader,
+		Material:                 lookupHash(v.Material),
+		VisualizerMiddle:         v.VisualizerMiddle,
+		VisualizerTrailer:        v.VisualizerTrailer,
+		PhysicalVisualizerExtras: v.PhysicalVisualizerExtras,
 	}, nil
 }
 
@@ -201,12 +228,25 @@ type LightVisualizer struct {
 	VisualizerTrailer
 }
 
+func (v *LightVisualizer) GetNamesOffset() int64 {
+	return -1
+}
+
 type UnimplementedVisualizer struct {
 	VisualizerHeader
 	UnkData [58]uint32 `json:"unk_data"` // The trailer should have at least this much data
 }
 
 func (v *UnimplementedVisualizer) Size() int64 {
+	return -1
+}
+func (v *UnimplementedVisualizer) NumComponents() uint32 {
+	return 0
+}
+func (v *UnimplementedVisualizer) ComponentsOffset() int64 {
+	return -1
+}
+func (v *UnimplementedVisualizer) GetNamesOffset() int64 {
 	return -1
 }
 
@@ -217,8 +257,11 @@ func ReadVisualizer(r io.ReadSeeker) (Visualizer, int64, error) {
 	if err := binary.Read(r, binary.LittleEndian, &header); err != nil {
 		return nil, -1, fmt.Errorf("Reading visualizer header: %v", err)
 	}
-	if base, err = r.Seek(-int64(binary.Size(header)), io.SeekCurrent); err != nil {
-		return nil, -1, fmt.Errorf("Reseeking visualizer start: %v", err)
+	if base, err = r.Seek(0, io.SeekCurrent); err != nil {
+		return nil, -1, fmt.Errorf("getting base: %v", err)
+	}
+	if _, err = r.Seek(-int64(binary.Size(header)), io.SeekCurrent); err != nil {
+		return nil, -1, fmt.Errorf("Seeking visualizer start: %v", err)
 	}
 	switch header.GetType() {
 	case VisualizerType_Billboard:
@@ -260,6 +303,130 @@ func ReadVisualizer(r io.ReadSeeker) (Visualizer, int64, error) {
 	}
 }
 
+type ComponentsVisualizer struct {
+	Visualizer
+	Components []Component
+	Names      []stingray.ThinHash
+}
+
+type SimpleComponentsVisualizer struct {
+	Visualizer `json:"visualizer"`
+	Components []Component `json:"components"`
+	Names      []string    `json:"names"`
+}
+
+func (v ComponentsVisualizer) Simplify(lookupHash func(stingray.Hash) string, lookupThinHash func(stingray.ThinHash) string) (Visualizer, error) {
+	visualizer, err := v.Visualizer.Simplify(lookupHash, lookupThinHash)
+	if err != nil {
+		return nil, err
+	}
+	var names []string
+	if v.Names != nil {
+		names = make([]string, 0)
+		for _, thinhash := range v.Names {
+			names = append(names, lookupThinHash(thinhash))
+		}
+	}
+	return &SimpleComponentsVisualizer{
+		Visualizer: visualizer,
+		Components: v.Components,
+		Names:      names,
+	}, nil
+}
+
+type ComponentFormat uint32
+
+const (
+	ComponentFormat_Unk0 ComponentFormat = iota
+	ComponentFormat_Unk1
+	ComponentFormat_Unk2
+	ComponentFormat_Unk3
+	ComponentFormat_Unk4
+	ComponentFormat_Unk5
+	ComponentFormat_Unk6
+	ComponentFormat_Unk7
+	ComponentFormat_Unk8
+	ComponentFormat_Unk9
+	ComponentFormat_Unk10
+	ComponentFormat_Unk11
+	ComponentFormat_Unk12
+)
+
+func (c ComponentFormat) MarshalText() ([]byte, error) {
+	return []byte(c.String()), nil
+}
+
+//go:generate go run golang.org/x/tools/cmd/stringer -type=ComponentFormat
+
+type ComponentHeader struct {
+	Format ComponentFormat `json:"format"`
+}
+
+func (c *ComponentHeader) GetFormat() ComponentFormat {
+	return c.Format
+}
+
+type Unk4Component struct {
+	ComponentHeader
+	UnkInts  [4]uint32 `json:"unk_ints"`
+	Graphs   [2]Graph  `json:"graphs"`
+	UnkInts2 [2]uint32 `json:"unk_ints2"`
+}
+
+type Unk5Component struct {
+	ComponentHeader
+	UnkInts [2]uint32     `json:"unk_ints"`
+	Graphs  [4]Graph      `json:"graphs"`
+	Color   GradientGraph `json:"color_graph"`
+	UnkInt  int32         `json:"unk_int"`
+}
+
+type Unk12Component struct {
+	ComponentHeader
+	UnkInts [7]uint32 `json:"unk_ints"`
+}
+
+type UnimplementedComponent struct {
+	ComponentHeader
+	//UnkData [1]uint32 `json:"unk_data"`
+}
+
+func ReadComponent(r io.ReadSeeker) (Component, error) {
+	var format ComponentFormat
+	if err := binary.Read(r, binary.LittleEndian, &format); err != nil {
+		return nil, fmt.Errorf("Reading component format: %v", err)
+	}
+	if _, err := r.Seek(-int64(binary.Size(format)), io.SeekCurrent); err != nil {
+		return nil, fmt.Errorf("Seeking base: %v", err)
+	}
+	switch format {
+	case ComponentFormat_Unk4:
+		var component Unk4Component
+		if err := binary.Read(r, binary.LittleEndian, &component); err != nil {
+			return nil, fmt.Errorf("Reading %v component: %v", format, err)
+		}
+		return &component, nil
+	case ComponentFormat_Unk5:
+		var component Unk5Component
+		if err := binary.Read(r, binary.LittleEndian, &component); err != nil {
+			return nil, fmt.Errorf("Reading %v component: %v", format, err)
+		}
+		return &component, nil
+	case ComponentFormat_Unk12:
+		var component Unk12Component
+		if err := binary.Read(r, binary.LittleEndian, &component); err != nil {
+			return nil, fmt.Errorf("Reading %v component: %v", format, err)
+		}
+		return &component, nil
+	default:
+		var component UnimplementedComponent
+		if err := binary.Read(r, binary.LittleEndian, &component); err != nil {
+			return nil, fmt.Errorf("Reading %v component: %v", format, err)
+		}
+		return &component, nil
+	}
+}
+
 type Controller interface {
 	GetFormat() ControllerFormat
 }
@@ -273,7 +440,14 @@ type Emitter interface {
 type Visualizer interface {
 	GetType() VisualizerType
 	Size() int64
+	NumComponents() uint32
+	ComponentsOffset() int64
+	GetNamesOffset() int64
 	Simplify(func(stingray.Hash) string, func(stingray.ThinHash) string) (Visualizer, error)
+}
+
+type Component interface {
+	GetFormat() ComponentFormat
 }
 
 type ParticleSystemHeader struct {
@@ -407,11 +581,38 @@ func Load(r io.ReadSeeker) (*Particle, error) {
 			if err != nil {
 				return nil, err
 			}
-			visualizers = append(visualizers, visualizer)
+			if _, err := r.Seek(base+visualizer.ComponentsOffset(), io.SeekStart); err != nil {
+				return nil, fmt.Errorf("seeking visualizer components: %v", err)
+			}
+			components := make([]Component, 0)
+			for range visualizer.NumComponents() {
+				component, err := ReadComponent(r)
+				if err != nil {
+					return nil, fmt.Errorf("reading component: %v", err)
+				}
+				components = append(components, component)
+			}
+			var names []stingray.ThinHash
+			if visualizer.GetNamesOffset() > visualizer.ComponentsOffset() {
+				if _, err := r.Seek(base+visualizer.GetNamesOffset(), io.SeekStart); err != nil {
+					return nil, fmt.Errorf("seeking visualizer component names: %v", err)
+				}
+				names = make([]stingray.ThinHash, visualizer.NumComponents())
+				if err := binary.Read(r, binary.LittleEndian, names); err != nil {
+					//return nil, fmt.Errorf("reading component names: %v", err)
+					names = nil
+				}
+			}
+			componentVisualizer := ComponentsVisualizer{
+				Visualizer: visualizer,
+				Components: components,
+				Names:      names,
+			}
+			visualizers = append(visualizers, componentVisualizer)
 			if visualizer.Size() == -1 {
 				break
 			}
-			if _, err := r.Seek(base+visualizer.Size()+4, io.SeekStart); err != nil {
+			if _, err := r.Seek(base+visualizer.Size(), io.SeekStart); err != nil {
 				return nil, fmt.Errorf("seeking next visualizer: %v", err)
 			}
 		}
