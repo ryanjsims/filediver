@@ -322,11 +322,7 @@ func AddMaterials(ctx *extractor.Context, doc *gltf.Document, imgOpts *extr_mate
 			extr_material.AddColorGradingLUT(ctx, doc, colorGradingDDS, mat)
 		}
 
-		resPath := ctx.LookupHash(materialId.Name)
-		if strings.Contains(resPath, "/") {
-			split := strings.Split(resPath, "/")
-			resPath = strings.Join(split[len(split)-2:], "/")
-		}
+		resPath := extractor.GetMaterialName(ctx, materialId)
 		matIdx, err := extr_material.AddMaterial(ctx.WithFileID(materialId), mat, doc, imgOpts, id, ctx.LookupThinHash(id)+" "+resPath, metadata)
 		if err != nil {
 			return nil, err

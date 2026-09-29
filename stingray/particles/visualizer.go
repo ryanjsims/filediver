@@ -288,9 +288,9 @@ type SimpleComponentsVisualizer struct {
 }
 
 func (v ComponentsVisualizer) Simplify(lookupHash func(stingray.Hash) string, lookupThinHash func(stingray.ThinHash) string) (Visualizer, error) {
-	visualizer, err := v.Visualizer.Simplify(lookupHash, lookupThinHash)
+	simpleVisualizer, err := v.Visualizer.Simplify(lookupHash, lookupThinHash)
 	if err != nil {
-		return nil, err
+		simpleVisualizer = v.Visualizer
 	}
 	var names []string
 	if v.Names != nil {
@@ -300,7 +300,7 @@ func (v ComponentsVisualizer) Simplify(lookupHash func(stingray.Hash) string, lo
 		}
 	}
 	return &SimpleComponentsVisualizer{
-		Visualizer: visualizer,
+		Visualizer: simpleVisualizer,
 		Components: v.Components,
 		Names:      names,
 	}, nil

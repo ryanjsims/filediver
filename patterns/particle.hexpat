@@ -87,11 +87,14 @@ enum ControllerFormat : u32 {
 };
 
 enum ControllerType : u32 {
-    Luminance = 40,
+    Velocity = 0x10,
+    Scale = 0x28,
+    ScaleHeight = 0x2c,
+    Luminance = 0x34,
     Life = 36,
 };
 
-struct Component {
+struct Controller {
     ControllerFormat format;
     ControllerType type;
     match(format) {
@@ -166,6 +169,34 @@ struct Emitter {
     }
 };
 
+enum ComponentType : u32 {
+    Graph = 4,
+    Color = 5,
+};
+
+struct Component {
+    ComponentType type;
+    match(type) {
+        (ComponentType::Graph): {
+            u32 unk[4];
+            XYGraph graph;
+            if(magic == 0x73) {
+                XYGraph graph2;
+            }
+            u32 unk[2];
+        }
+        (ComponentType::Color): {
+            u32 unk[2];
+            XYGraph graph;
+            if(magic == 0x73) {
+                XYGraph graph2;
+            }
+            GradientGraph color;
+            u32 unk[2];
+        }
+    }
+};
+
 enum VisualizerType : u32 {
     Billboard,
     Light,
@@ -192,6 +223,7 @@ struct TrailVisualizer {
 
 struct Visualizer {
     VisualizerType type;
+    u64 base = $;
     match(type) {
         (VisualizerType::Billboard): BillboardVisualizer visualizer;
         (VisualizerType::Mesh): MeshVisualizer visualizer;
@@ -199,13 +231,29 @@ struct Visualizer {
         (_): std::print("Unimplemented visualizer type {}", type);
     }
     u32 unkValues[51];
+    if (magic == 0x31) {
+        u32 unkNewInt;
+    }
     u32 unkint1;
-    u32 unkCount;
-    u32 unkOffset;
-    u32 unkOffset2;
+    u32 componentCount;
+    u32 componentOffset;
+    if (magic == 0x73) {
+        u32 componentNameOffset;
+    } else if(magic == 0x31) {
+        u32 totalSize;
+    }
+
     u32 unkCount3;
-    u32 unkOffset3;
-    u32 totalSize;
+    if (magic == 0x73) {
+        u32 unkOffset3;
+        u32 totalSize;
+    } else {
+        u32 componentNameOffset;
+    }
+    if (componentCount > 0) {
+        Component components[componentCount] @ base + componentOffset;
+        ThinMurmurHash names[componentCount] @ base + componentNameOffset;
+    }
     padding[totalSize - sizeof(this)];
 };
 
@@ -239,10 +287,10 @@ struct ParticleSystem {
         float unknownFloats[3];
     }
 
-    u32 componentListCount;
-    u32 componentListOffset;
-    if (componentListCount > 0) {
-        Component components[componentListCount] @ base + componentListOffset;
+    u32 controllerListCount;
+    u32 controllerListOffset;
+    if (controllerListCount > 0) {
+        Controller controllers[controllerListCount] @ base + controllerListOffset;
     }
 
     u32 emitterCount;

@@ -573,7 +573,7 @@ func addPositionMinMax(doc *gltf.Document, transformMatrix mgl32.Mat4, min, max 
 	maxTransformed := transformMatrix.Mul4x1(max.Vec4(1)).Vec3()
 	doc.Accessors[accessor].Min = minTransformed[:]
 	doc.Accessors[accessor].Max = maxTransformed[:]
-	for k := 0; k < 3; k++ {
+	for k := range 3 {
 		if doc.Accessors[accessor].Min[k] > doc.Accessors[accessor].Max[k] {
 			temp := doc.Accessors[accessor].Max[k]
 			doc.Accessors[accessor].Max[k] = doc.Accessors[accessor].Min[k]

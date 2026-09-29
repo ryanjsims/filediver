@@ -33799,3 +33799,9 @@ interact_side_hatch
 ibl_brdf_lut
 vehicle_damage_data
 decal_scalar_fields
+position
+size
+emit
+tangent
+binormal
+unbent

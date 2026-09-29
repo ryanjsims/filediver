@@ -242,3 +242,12 @@ func SaveDocument(ctx *Context, doc *gltf.Document, stingrayFormat, fileFormat s
 	}
 	return nil
 }
+
+func GetMaterialName(ctx *Context, materialId stingray.FileID) string {
+	resPath := ctx.LookupHash(materialId.Name)
+	if strings.Contains(resPath, "/") {
+		split := strings.Split(resPath, "/")
+		resPath = strings.Join(split[len(split)-2:], "/")
+	}
+	return resPath
+}
