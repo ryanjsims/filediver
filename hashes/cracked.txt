@@ -3016,8 +3016,16 @@ colony_pipes_prefab_05
 colony_pipes_prefab_06
 colony_pipes_prefab_07
 colony_pipes_prefab_1
+colony_pipes_prefab_10
+colony_pipes_prefab_11
 colony_pipes_prefab_2
 colony_pipes_prefab_3
+colony_pipes_prefab_4
+colony_pipes_prefab_5
+colony_pipes_prefab_6
+colony_pipes_prefab_7
+colony_pipes_prefab_8
+colony_pipes_prefab_9
 colony_planter_1m_
 colony_planter_1m_01
 colony_planter_2m_01
@@ -3037,6 +3045,10 @@ colony_roof_prop_01
 colony_roof_prop_02
 colony_roof_prop_04
 colony_roof_prop_1
+colony_roof_prop_2
+colony_roof_prop_3
+colony_roof_prop_4
+colony_roof_trim_pipes_
 colony_roof_trim_pipes_01
 colony_rover
 colony_sign_
@@ -3048,6 +3060,8 @@ colony_sign_02_a
 colony_sign_02_a1
 colony_sign_1
 colony_solar_panel
+colony_street_sign_octagon
+colony_street_sign_triangle
 colony_trashcan_
 colony_trashcan_01
 colony_tunnel

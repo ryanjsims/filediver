@@ -1178,6 +1178,8 @@ CamouflageSwap
 CamouflageType
 VoTag
 ZoneTag
+MeleeModeInfo
+MeleeComboSequenceInfo
 
 // ======== Enums and Values ========
 HelldiverCustomizationPassiveBonus
