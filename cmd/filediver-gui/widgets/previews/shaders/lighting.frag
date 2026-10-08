@@ -15,11 +15,22 @@ float recoverInverseZ(vec2 normal_xy) {
     return inversesqrt(1 - (normal_xy.x * normal_xy.x) - (normal_xy.y * normal_xy.y));
 }
 
-vec3 sRGB(vec3 color) {
+vec3 sRGBFromIntensity(vec3 color) {
     vec3 temp = max(color, vec3(0.000061));
     color = temp * 12.92;
     temp = exp2(log2(max(temp, vec3(0.003131))) * 0.416667) * 1.055 - 0.055;
     return min(color, temp);
+}
+
+vec3 sRGBToIntensity(vec3 color) {
+    color = max(color, vec3(0.000061));
+    bvec3 compared = lessThan(vec3(0.04045), color);
+    vec3 temp = exp2(log2((color + 0.055) / 1.055) * 2.4);
+    color = color / 12.92;
+    color.x = compared.x ? temp.x : color.x;
+    color.y = compared.y ? temp.y : color.y;
+    color.z = compared.z ? temp.z : color.z;
+    return color;
 }
 
 vec3 rgb2hsv(vec3 c)

@@ -403,7 +403,7 @@ void main() {
 
     roughness = clamp(weathering_dirt_roughness * (0.8 - roughness) + roughness, 0.0, 1.0);
 
-    base_color.xyz = sRGB(base_color.xyz);
+    base_color.xyz = sRGBFromIntensity(base_color.xyz);
 
     normal_modified = normalize(normal_modified);
 

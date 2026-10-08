@@ -38,10 +38,13 @@ import (
 	"github.com/xypwn/filediver/cmd/filediver-gui/widgets"
 	"github.com/xypwn/filediver/cmd/filediver-gui/widgets/previews"
 	"github.com/xypwn/filediver/config"
+	datalib "github.com/xypwn/filediver/datalibrary"
 	"github.com/xypwn/filediver/exec"
 	"github.com/xypwn/filediver/stingray"
 	"github.com/xypwn/filediver/stingray/entity"
 	"golang.design/x/clipboard"
+	"golang.org/x/text/cases"
+	"golang.org/x/text/language"
 )
 
 //go:embed LICENSE
@@ -425,6 +428,13 @@ func (a *guiApp) onPreDraw(state *imgui_wrapper.State) error {
 				Name:                 &a.extractorConfig.Planet.Name,
 				UseCity:              &a.extractorConfig.Planet.City,
 				UpdateAssetOverrides: a.gameData.UpdateAssetOverrides,
+				GetPlanet: func() *datalib.PlanetData {
+					lowerName := cases.Lower(language.English).String(a.extractorConfig.Planet.Name)
+					if planet, contains := a.gameData.Planets[lowerName]; contains {
+						return &planet
+					}
+					return nil
+				},
 			},
 			previews.ExtractorArmorParameters{
 				ArmorSets:        a.gameData.ArmorSets,
