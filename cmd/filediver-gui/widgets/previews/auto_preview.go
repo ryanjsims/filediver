@@ -72,6 +72,7 @@ type ExtractorPlanetParameters struct {
 	Name                 *string
 	UseCity              *bool
 	UpdateAssetOverrides func(string, bool)
+	GetPlanet            func() *datalib.PlanetData
 }
 
 type ExtractorArmorParameters struct {
@@ -93,7 +94,7 @@ func NewAutoPreview(otoCtx *oto.Context, audioSampleRate int, hashes map[stingra
 		}
 		return h.String()
 	}
-	pv.previews.unit, err = NewUnitPreview(getResourceGenerator(true), pv.getOverride, armorParams, lookupHash)
+	pv.previews.unit, err = NewUnitPreview(getResourceGenerator(true), pv.getOverride, armorParams, planetParams, lookupHash)
 	if err != nil {
 		return nil, err
 	}
