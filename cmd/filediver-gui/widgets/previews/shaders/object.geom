@@ -6,6 +6,7 @@ layout (triangle_strip, max_vertices = 3) out;
 in VertexOutput
 {
     vec3 fragPosition;
+    vec3 fragPositionObjectSpace;
     vec2 fragUV0;
     vec2 fragUV1;
     vec2 fragUV2;
@@ -17,6 +18,7 @@ in VertexOutput
 } inVertices[];
 
 out vec3 fragPosition;
+out vec3 fragPositionObjectSpace;
 out vec2 fragUV0;
 out vec2 fragUV1;
 out vec2 fragUV2;
@@ -40,6 +42,7 @@ uint getUDIM(vec2 uv) {
 void drawVertex(int idx) {
     gl_Position = gl_in[idx].gl_Position;
     fragPosition = inVertices[idx].fragPosition;
+    fragPositionObjectSpace = inVertices[idx].fragPositionObjectSpace;
     fragUV0 = inVertices[idx].fragUV0;
     fragUV1 = inVertices[idx].fragUV1;
     fragUV2 = inVertices[idx].fragUV2;
