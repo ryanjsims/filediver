@@ -836,7 +836,7 @@ func LoadTerrain(terrainInfo TerrainInfo) (Mesh, error) {
 	normals := make([][3]float32, 0)
 	tangents := make([][4]float32, 0)
 	bitangents := make([][3]float32, 0)
-	up := mgl32.Vec3{0, 1, 0}
+	up := mgl32.Vec3{0, 1, 1}
 	var maxHeight float32 = -math.MaxFloat32
 	for y := range terrainInfo.Textures[0].Resolution {
 		for x := range terrainInfo.Textures[0].Resolution {
