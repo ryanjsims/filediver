@@ -122,6 +122,16 @@ var LEVEL = stingray.Sum("level")
 var MATERIAL = stingray.Sum("material")
 var TEXTURE = stingray.Sum("texture")
 
+var terrainMaterialGenerators = []stingray.FileID{
+	{Name: stingray.Hash{Value: 0x11b26119177842e2}, Type: MATERIAL},
+	{Name: stingray.Hash{Value: 0x77e5a378165df76b}, Type: MATERIAL},
+	{Name: stingray.Hash{Value: 0x8448abc93ddacf85}, Type: MATERIAL},
+	{Name: stingray.Hash{Value: 0xa844132fbd92fe17}, Type: MATERIAL},
+	{Name: stingray.Hash{Value: 0xb01bc7148e58524c}, Type: MATERIAL},
+	{Name: stingray.Hash{Value: 0xb6e115979b70d004}, Type: MATERIAL},
+	{Name: stingray.Hash{Value: 0xd45834942a4a5581}, Type: MATERIAL},
+}
+
 var seed = rand.Uint32()
 
 func setupTexture(textureID, target uint32) {
