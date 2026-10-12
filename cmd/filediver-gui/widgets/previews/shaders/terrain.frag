@@ -54,5 +54,5 @@ void main() {
     graded_color = gradingParams.x * (graded_secondary - graded_color) + graded_color;
     color = sRGBFromIntensity(gradingParams.y * (graded_masked_details - graded_color) + graded_color);
 
-    fragColor = calculateLighting(vec4(color, 1.0), nar.w, metallic, nar.z, normal);
+    fragColor = calculateLighting(vec4(color, 1.0), color, nar.w, metallic, nar.z, normal);
 }
