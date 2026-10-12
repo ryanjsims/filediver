@@ -74,7 +74,17 @@ var lutTextureNames = []string{
 	"material_lut",
 	"pattern_masks_array",
 	"id_masks_array",
+	"blood_splatter_tiler",
+	"bug_splatter_tiler",
+	"weathering_dirt",
+	"weathering_special",
 	"ibl_brdf_lut",
+}
+
+// Names of uniform blocks to be shared across lut materials
+var lutGlobalBlocks = []string{
+	"SnowBlock",
+	"WeatheringSettingsBlock",
 }
 
 // Textures used by the standard fragment shader
@@ -102,6 +112,18 @@ var UNIT = stingray.Sum("unit")
 var SPEEDTREE = stingray.Sum("speedtree")
 var PREFAB = stingray.Sum("prefab")
 var LEVEL = stingray.Sum("level")
+var MATERIAL = stingray.Sum("material")
+var TEXTURE = stingray.Sum("texture")
+
+var terrainMaterialGenerators = []stingray.FileID{
+	{Name: stingray.Hash{Value: 0x11b26119177842e2}, Type: MATERIAL},
+	{Name: stingray.Hash{Value: 0x77e5a378165df76b}, Type: MATERIAL},
+	{Name: stingray.Hash{Value: 0x8448abc93ddacf85}, Type: MATERIAL},
+	{Name: stingray.Hash{Value: 0xa844132fbd92fe17}, Type: MATERIAL},
+	{Name: stingray.Hash{Value: 0xb01bc7148e58524c}, Type: MATERIAL},
+	{Name: stingray.Hash{Value: 0xb6e115979b70d004}, Type: MATERIAL},
+	{Name: stingray.Hash{Value: 0xd45834942a4a5581}, Type: MATERIAL},
+}
 
 var seed = rand.Uint32()
 
@@ -251,7 +273,7 @@ type unitPreviewMaterial struct {
 	program        uint32
 	shaderCacheKey string
 	uniforms       unitPreviewUniforms
-	uniformBlocks  []unitPreviewUniformBlock
+	uniformBlocks  []*unitPreviewUniformBlock
 	textures       []unitPreviewMaterialTexture
 }
 
@@ -307,7 +329,7 @@ func (mat *unitPreviewMaterial) generate(shaderPaths []string, textures int, uni
 		blockName := string(buf[:length])
 		block := unitPreviewUniformBlock{binding: uint32(bindpoint)}
 		block.generate(mat.program, blockName)
-		mat.uniformBlocks = append(mat.uniformBlocks, block)
+		mat.uniformBlocks = append(mat.uniformBlocks, &block)
 	}
 
 	return nil
@@ -316,6 +338,9 @@ func (mat *unitPreviewMaterial) generate(shaderPaths []string, textures int, uni
 func (mat *unitPreviewMaterial) delete(textureCache *glutils.TextureCache) {
 	mat.releaseTextures(textureCache)
 	for _, block := range mat.uniformBlocks {
+		if slices.Contains(lutGlobalBlocks, block.name) {
+			continue
+		}
 		gl.DeleteBuffers(1, &block.ubo)
 	}
 	if entry, contains := shaderCache[mat.shaderCacheKey]; contains && entry.users <= 1 {
@@ -444,6 +469,8 @@ type UnitPreviewState struct {
 	objectsShown            map[stingray.FileID]map[string]bool
 	objectsShownDefault     map[stingray.FileID]map[string]bool
 	objectsSelected         map[stingray.FileID]map[string]bool
+
+	globalLutBlocks map[string]*unitPreviewUniformBlock
 
 	entityInfo             *entity.Entity
 	assetGradingLut        []extr_entity.Vec4F16
@@ -610,6 +637,9 @@ func (pv *UnitPreviewState) Delete() {
 		gl.DeleteBuffers(1, &pv.assetGradingLutBuffer)
 		gl.DeleteTextures(1, &pv.assetGradingLutTexture)
 		pv.assetGradingLut = nil
+	}
+	for _, block := range pv.globalLutBlocks {
+		gl.DeleteBuffers(1, &block.ubo)
 	}
 	pv.releaseMaterialDetailer()
 	pv.textureCache.DeleteAll()
@@ -1252,6 +1282,9 @@ func (pv *UnitPreviewState) finalizeMaterialTextures(object *unitPreviewObject, 
 		var id uint32
 		uniform := object.materials[group].uniforms[texture.slot]
 		if texture.name.Value == 0 {
+			if len(texture.defaultColor) == 0 {
+				continue
+			}
 			gl.GenTextures(1, &object.materials[group].textures[idx].id)
 			id = object.materials[group].textures[idx].id
 			setupTexture(id, texture.target)
@@ -1356,6 +1389,22 @@ func (pv *UnitPreviewState) useLUTMaterial(previewMaterial *unitPreviewMaterial,
 	)
 	if err != nil {
 		return err
+	}
+
+	if pv.globalLutBlocks == nil {
+		pv.globalLutBlocks = make(map[string]*unitPreviewUniformBlock)
+	}
+	for idx, block := range previewMaterial.uniformBlocks {
+		if !slices.Contains(lutGlobalBlocks, block.name) {
+			continue
+		}
+		if gblock, contains := pv.globalLutBlocks[block.name]; !contains {
+			fmt.Printf("Setting up global block %v\n", block.name)
+			pv.globalLutBlocks[block.name] = block
+		} else {
+			gl.DeleteBuffers(1, &block.ubo)
+			previewMaterial.uniformBlocks[idx] = gblock
+		}
 	}
 
 	if pv.detailerLoadState == DetailerLoaded {
@@ -1583,6 +1632,10 @@ func (pv *UnitPreviewState) Clear() {
 		pv.assetGradingLutTexture = 0
 		pv.assetGradingLut = nil
 	}
+	for _, block := range pv.globalLutBlocks {
+		gl.DeleteBuffers(1, &block.ubo)
+	}
+	pv.globalLutBlocks = nil
 }
 
 // Calculate max zoom out distance
@@ -3954,7 +4007,7 @@ func cmpHashStringsGenerator(lookupHash func(stingray.Hash) string, nodes map[st
 	}
 }
 
-func (pv *UnitPreviewState) drawUniformBlock(block int, uniformBlock unitPreviewUniformBlock) {
+func (pv *UnitPreviewState) drawUniformBlock(block int, uniformBlock *unitPreviewUniformBlock) {
 	sortedSettingsKeys := slices.Sorted(maps.Keys(uniformBlock.currentValues))
 	longest := slices.MaxFunc(sortedSettingsKeys, func(a, b string) int { return cmp.Compare(len(a), len(b)) })
 	//pos := imgui.CursorScreenPos()
@@ -4092,6 +4145,10 @@ func (pv *UnitPreviewState) drawUnitMaterialSettings(unit stingray.FileID, objec
 			}
 			imgui.PushStyleColorVec4(imgui.ColText, *color)
 			for block := range pv.objects[unit][mesh].materials[idx].uniformBlocks {
+				name := pv.objects[unit][mesh].materials[idx].uniformBlocks[block].name
+				if _, contains := pv.globalLutBlocks[name]; contains {
+					continue
+				}
 				pv.drawUniformBlock(block, pv.objects[unit][mesh].materials[idx].uniformBlocks[block])
 			}
 			imgui.PopStyleColor()
@@ -4154,6 +4211,19 @@ func (pv *UnitPreviewState) drawNodeTree(curr unitPreviewNode, nodeId stingray.F
 			pv.drawUnitMaterialSettings(unit, object, flags)
 
 			imgui.TreePop()
+		}
+		if nodeId == pv.rootHash && pv.globalLutBlocks != nil {
+			sortedBlocks := slices.Sorted(maps.Keys(pv.globalLutBlocks))
+			if imgui.TreeNodeExStrV("Global Shader Settings", flags) {
+				for idx, block := range sortedBlocks {
+					if !imgui.TreeNodeExStrV(block, imgui.TreeNodeFlagsOpenOnArrow|imgui.TreeNodeFlagsDrawLinesToNodes) {
+						continue
+					}
+					pv.drawUniformBlock(idx, pv.globalLutBlocks[block])
+					imgui.TreePop()
+				}
+				imgui.TreePop()
+			}
 		}
 		imgui.TreePop()
 	}

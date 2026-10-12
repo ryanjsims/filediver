@@ -41,13 +41,13 @@ vec3 hsv2rgb(vec3 c)
 }
 
 // Normal is expected to be in tangent space
-vec4 calculateLighting(vec4 base_color, float roughness, float metallic, float ambient_occlusion, vec3 normal) {
+vec4 calculateLighting(vec4 base_color, vec3 specular_color, float roughness, float metallic, float ambient_occlusion, vec3 normal) {
     vec3 ambient = vec3(0.5) * ambient_occlusion;
     vec3 lightDirection = normalize(fragTangentLightPosition - fragTangentFragmentPosition);
     vec3 lightColor = vec3(0.7);
     vec3 diffuse = max(dot(normal, lightDirection), 0) * lightColor;
 
-    vec3 specularColor = mix(vec3(0.04), base_color.rgb, metallic);
+    vec3 specularColor = mix(vec3(0.04), specular_color, metallic);
 
     vec3 viewDirection = normalize(fragTangentViewPosition - fragTangentFragmentPosition);
     vec3 reflectDirection = reflect(-lightDirection, normal);
@@ -69,7 +69,7 @@ vec4 calculateLighting(vec4 base_color, float roughness, float metallic, float a
     vec3 diffuseLight = diffRef * lightColor;
 
     // ibl lighting
-    vec2 brdf = texture2D(ibl_brdf_lut, vec2(roughness, NdV)).xy * 0.66;
+    vec2 brdf = texture(ibl_brdf_lut, vec2(roughness, NdV)).xy * 0.66;
     vec3 iblspec = min(vec3(0.99), mix(specularColor, vec3(1.0), pow(1.01 - NdV, 5.0))) * brdf.x + brdf.y;
     reflectedLight += iblspec * ambient;
     diffuseLight += ambient * (1.0 / 3.1415926);

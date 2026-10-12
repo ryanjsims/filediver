@@ -75,6 +75,7 @@ void main() {
 
     normal = normal * 2.0 - 1.0; // in tangent space
     normal.z = reconstructNormalZ(normal.xy);
+    normal = normalize(normal);
 
     normal.x = -normal.x;
     // winding order is different than directx I guess, so frontfacing gets the back faces
@@ -92,6 +93,6 @@ void main() {
     vec3 halfwayDirection = normalize(lightDirection + viewDirection);
     vec3 specular = pow(max(dot(normal, halfwayDirection), 0.0), 32.0) * lightColor;
 
-    fragColor = vec4(albedo * (mix(ambient, diffuse, 0.6) + 0.5 * specular), 1.0);
-    //fragColor = calculateLighting(vec4(albedo, 1.0), tex2_sample.g, tex2_sample.a, tex2_sample.b, normal);
+    //fragColor = vec4(albedo * (mix(ambient, diffuse, 0.6) + 0.5 * specular), 1.0);
+    fragColor = calculateLighting(vec4(albedo, 1.0), albedo, tex2_sample.g, tex2_sample.a, tex2_sample.b, normal);
 }

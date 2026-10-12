@@ -13,6 +13,7 @@ layout(location = 11) in mat3 normalMat;
 out VertexOutput
 {
     vec3 fragPosition;
+    vec3 fragPositionObjectSpace; // pass through for some shaders to use
     vec2 fragUV0;
     vec2 fragUV1;
     vec2 fragUV2;
@@ -30,6 +31,7 @@ uniform mat4 model;
 uniform vec3 viewPosition;
 
 void main() {
+    fragPositionObjectSpace = inPosition;
     gl_Position = projection * view * model * instModel * vec4(inPosition, 1.0);
     fragPosition = vec3(model * vec4(inPosition, 1.0));
     fragUV0 = inUV;
