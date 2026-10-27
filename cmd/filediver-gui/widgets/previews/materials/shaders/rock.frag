@@ -34,6 +34,18 @@ layout(shared, binding = 0) uniform RockBlock {
     float dirt_metallic;
     float dirt_roughness;
     float dirt_roughness_blend;
+    vec2 emissive_ao_range;
+    float emissive_ao_roughness_intensity;
+    vec3 emissive_base_color_ao_roughness;
+    float emissive_base_color_curve;
+    float emissive_base_color_intensity;
+    vec2 emissive_base_color_luminance_range;
+    vec3 emissive_base_color_tint;
+    float emissive_height_fade_distance;
+    float emissive_height_fade_exponent;
+    float emissive_height_fade_start;
+    float emissive_power;
+    vec2 emissive_roughness_range;
     float gradient_dirt_maxheight;
     float gradient_dirt_minheight;
     float grading_group_id;
@@ -74,6 +86,27 @@ layout(shared, binding = 0) uniform RockBlock {
 layout(shared, binding = 1) uniform DebugBlock {
     uint debug;
 };
+
+vec3 emissive(vec3 base_color, float roughness, float ao, float obj_height) {
+    float luminance = dot(base_color, vec3(0.2127, 0.7152, 0.0721)) - emissive_base_color_luminance_range.x;
+    luminance = clamp(luminance / max(emissive_base_color_luminance_range.y - emissive_base_color_luminance_range.x, 0.001), 0.0, 1.0);
+    vec3 emissive_color = luminance * base_color * emissive_base_color_tint;
+
+    float emissive_roughness = 1.0 - clamp((emissive_roughness_range.x - roughness) / (emissive_roughness_range.x - emissive_roughness_range.y), 0.0, 1.0);
+    float emissive_ao = 1.0 - clamp((emissive_ao_range.x - ao) / (emissive_ao_range.x - emissive_ao_range.y), 0.0, 1.0);
+    vec3 emissive_roughness_ao_color = emissive_ao * emissive_roughness * emissive_base_color_ao_roughness;
+    emissive_roughness_ao_color = emissive_ao_roughness_intensity * emissive_roughness_ao_color;
+
+    emissive_color = gamma(abs(emissive_color), emissive_base_color_curve);
+    emissive_color = emissive_color * emissive_base_color_intensity + emissive_roughness_ao_color;
+    emissive_color = gamma(abs(emissive_color), emissive_power);
+
+    float emissive_height_val = clamp((obj_height - emissive_height_fade_start) / max(emissive_height_fade_distance, 0.001), 0.0, 1.0);
+    emissive_height_val = curve(emissive_height_val, max(emissive_height_fade_exponent, 0.001));
+
+    emissive_color = min((1.0 - emissive_height_val) * emissive_color, vec3(1.0, 1.0, 1.0));
+    return gamma(emissive_color, 0.8);
+}
 
 vec3 ice_fuzz_subsurface(vec3 base_color, float view_align, float inv_ao) {
     vec3 fuzz_color = clamp(ice_fuzz_color, 0.0, 1.0);
@@ -289,23 +322,27 @@ void main() {
         ao = min(dirt_mix * (weathering_nar_sample.w - 1.0) + 1.0, ao);
     }
 
-    vec3 tangentCombinedNormal = normalize(dbg_fragITBN * combined_normal);
-    vec3 viewDirection = normalize(fragTangentViewPosition - fragTangentFragmentPosition);
+    vec3 tangentCombinedNormal = -normalize(dbg_fragITBN * combined_normal);
+    vec3 viewDirection = -normalize(fragTangentViewPosition - fragTangentFragmentPosition);
     float view_align = max(dot(tangentCombinedNormal, viewDirection), 0.0001);
 
+    float metallic = material_wetness;
+    roughness = clamp(roughness, 0.0, 1.0) * 0.955 + 0.045;
+
+    vec3 emissive_color = vec3(0.0);
     // Rock type is based on the index of the specific rock base material in the rockMaterials slice
     switch(rock_type) {
+    case 1: // emissive
+        emissive_color = emissive(base_color, roughness, ao, obj_height);
+        break;
     case 3: // ice
         base_color = ice_fuzz_subsurface(base_color, view_align, inv_ao);
         break;
     }
 
-    float metallic = material_wetness;
-    roughness = clamp(roughness, 0.0, 1.0) * 0.955 + 0.045;
-
     switch (debug) {
     case 1:
-        fragColor = vec4(combined_detail_albedo, 1.0);
+        fragColor = vec4(emissive_color, 1.0);
         break;
     case 2:
         fragColor = vec4(vec3(view_align), 1.0);
@@ -316,13 +353,8 @@ void main() {
     case 4:
         fragColor = vec4(tangentCombinedNormal, 1.0);
         break;
-    case 5:
-        fragColor = vec4(mixed_vertex_normal, 1.0);
-        break;
-    case 6:
-        fragColor = vec4(nad_normal, 1.0);
-        break;
     default:
         fragColor = calculateLighting(vec4(sqrt(base_color), 1.0), roughness, metallic, 0.0, ao, tangentCombinedNormal, 1.0, 1.0);
+        fragColor += vec4(emissive_color, 0.0);
     }
 }
