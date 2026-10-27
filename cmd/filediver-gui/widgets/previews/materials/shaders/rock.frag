@@ -8,6 +8,8 @@ out vec4 fragColor;
 
 in vec3 objPosition;
 in vec2 fragUV0;
+in mat4 instanceModel;
+in mat3 dbg_fragITBN;
 
 uniform sampler2D base_normal_ao_dirt;
 uniform sampler2D detail_mask_;
@@ -17,6 +19,7 @@ uniform sampler2DArray triplanar_detail_albedo;
 uniform sampler2DArray triplanar_detail_data;
 
 layout(shared, binding = 0) uniform RockBlock {
+    uint rock_type;
     float albedo_intensity;
     float base_ao_intensity;
     float base_normal_intensity;
@@ -37,7 +40,17 @@ layout(shared, binding = 0) uniform RockBlock {
     float grading_group_id_weathering;
     float grading_secondary_group_id;
     float heightmap_normals;
+    vec3 ice_fuzz_color;
+    float ice_fuzz_intensity;
+    vec3 ice_subsurface_color;
+    float ice_subsurface_diffusion;
+    float ice_subsurface_intensity;
+    float ice_subsurface_thickness;
+    float ice_subsurface_wrap;
+    float material_input_y;
     float material_wetness;
+    float subsurface_occlusion_intensity;
+    float subsurface_occlusion_maskcurve;
     float tiler_ao_intensity;
     vec3  top_color_tint;
     float top_dirt_value;
@@ -62,6 +75,20 @@ layout(shared, binding = 1) uniform DebugBlock {
     uint debug;
 };
 
+vec3 ice_fuzz_subsurface(vec3 base_color, float view_align, float inv_ao) {
+    vec3 fuzz_color = clamp(ice_fuzz_color, 0.0, 1.0);
+    float fuzz_intensity = clamp(ice_fuzz_intensity, 0.0, 1.0);
+    fuzz_intensity = max(fuzz_intensity - view_align * fuzz_intensity, 0.0);
+    base_color = fuzz_intensity * (fuzz_color - base_color) + base_color;
+
+    float subsurface_occlusion = clamp(curve(inv_ao, max(subsurface_occlusion_maskcurve, 0.001)) * subsurface_occlusion_intensity + ice_subsurface_intensity, 0.0, 1.0);
+    float subsurface_wrap = clamp(ice_subsurface_wrap, 0.0, 1.0);
+    float subsurface_wrap_val = subsurface_wrap * (1.0 - 2.0 * view_align) + view_align;
+    subsurface_wrap = subsurface_wrap - 0.5;
+    subsurface_wrap_val = subsurface_occlusion * (curve(abs(subsurface_wrap_val), abs(subsurface_wrap) * 2.0 + 1.0) - abs(subsurface_wrap) + 0.5);
+    return subsurface_wrap_val * (ice_subsurface_color - base_color) + base_color;
+}
+
 void main() {
     vec3 normal = normalize(dbg_fragTBN[2].xyz);
     vec3 mixed_vertex_normal = heightmap_normals * (vec3(0.0, 0.0, 1.0) - normal) + normal;
@@ -70,6 +97,8 @@ void main() {
     if (sqrlen == 0.0) {
         mixed_vertex_normal = vec3(0.0, 0.0, 1.0);
     }
+
+    vec3 heightmap_normal = /*heightmap_tbn **/ normal;
 
     vec3 face_tangent = dFdx(objPosition);
     vec3 face_bitangent = dFdy(objPosition);
@@ -146,12 +175,13 @@ void main() {
     detail_normal.xz = detail_normal.xy * -dn_z;
     detail_normal.y = 0.0;
 
-    detail_normal = getTriplanarCustomNormal(combined_normal, detail_normal);
+    detail_normal = getCustomTriplanarNormal(combined_normal, detail_normal);
     combined_normal = triplanar_normal_intensity * (detail_normal - dot(detail_normal, combined_normal) * combined_normal) + nad_normal;
 
     vec3 base_albedo = combined_detail_albedo * albedo_intensity;
 
-    float dirt_height = clamp(((objPosition.y + fd_world_offset.y) - gradient_dirt_maxheight) / (gradient_dirt_minheight - gradient_dirt_maxheight), 0.0, 1.0);
+    float obj_height = objPosition.y + fd_world_offset.y;
+    float dirt_height = clamp((obj_height - gradient_dirt_maxheight) / (gradient_dirt_minheight - gradient_dirt_maxheight), 0.0, 1.0);
     dirt_height = (3.0 - dirt_height * 2.0) * dirt_height * dirt_height;
 
     float dirt_value = dirt_height * (bottom_dirt_value - top_dirt_value) + top_dirt_value;
@@ -185,7 +215,7 @@ void main() {
     float up_fade_crv = max(up_fade_curve, 0.001);
 
     // what's up_val?
-    float up_val = curve(clamp(objPosition.y / up_fade, 0.0, 1.0), up_fade_crv);
+    float up_val = curve(clamp(obj_height / up_fade, 0.0, 1.0), up_fade_crv);
 
     vec3 tint_color = up_val * (top_color_tint - bottom_color_tint) + bottom_color_tint;
     base_color = tint_color * base_color;
@@ -208,26 +238,91 @@ void main() {
 
     base_color = dirt_mix * dirt_metallic * (dirt_color - base_color) + base_color;
 
-    float weathering_height_crv = max(weathering_height_curve, 0.001);
+    inv_ao = abs(1.0 - ao);
+    float weathering_coverage_amount = clamp(material_input_y * weathering_coverage_multiplier + weathering_coverage, 0.0, 1.0);
+    float weathering_height_val = curve(1.0 - clamp(obj_height / max(weathering_height, 0.001), 0.0, 1.0), max(weathering_height_curve, 0.001));
 
+    if (weathering_height > 99.9) {
+        weathering_height_val = 1.0;
+    }
+    weathering_height_val = weathering_height_val * weathering_coverage_amount;
+
+    float heightmap_up_amount = clamp(heightmap_normal.z, -0.05, 1.0) + 0.05;
+    float weathering_amount = clamp((2.5 * (heightmap_up_amount / 1.05 - (1.0 - curve(weathering_height_val, 0.7))) - 0.1) / 1.1, 0.0, 1.0);
+    weathering_amount = clamp((1.0 - clamp(dirt_mix * weathering_on_dirt_amount + weathering_amount, 0.0, 1.0)) * weathering_thickness - weathering_thickness + 1.0, 0.0, 1.0);
+    combined_normal = normalize(mixed_vertex_normal + combined_normal);
+    combined_normal = weathering_amount * (combined_normal - heightmap_normal) + heightmap_normal;
+    float combined_len = dot(combined_normal, combined_normal);
+    combined_normal = normalize(combined_normal);
+    if (combined_len <= 0) {
+        combined_normal = vec3(0.0, 0.0, 1.0);
+    }
+
+    float combined_normal_up_amount = 2.5 * (((clamp(combined_normal.z, -0.125, 1.0) + 0.125) / 1.125) - (1 - weathering_height_val * weathering_height_val));
+    combined_normal_up_amount = clamp(combined_normal_up_amount / (weathering_height_val * weathering_height_val + 0.001), 0.0, 1.0);
+
+    float weathering_ao = clamp(((1.0 - ao) * weathering_ao_amount) * clamp(combined_normal.z, 0.0, 1.0) - weathering_ao_cutoff, 0.0, 1.0);
+
+    if (dirt_mix != 0.0) {
+        vec2 weathering_uvs = getCustomTriplanarUVs(combined_normal) * weathering_tiling;
+        vec3 weathering_color = texture(weathering_albedo, weathering_uvs).xyz;
+        vec4 weathering_nar_sample = texture(weathering_nar, weathering_uvs);
+
+        vec3 weathering_normal = vec3(weathering_nar_sample.xy * 2.0 - 1.0, 0.0);
+        vec2 weathering_sqnorm = weathering_normal.xy * weathering_normal.xy;
+        weathering_normal.z = max(max(weathering_sqnorm.x, weathering_sqnorm.y) / 16384.0, 1.0 - weathering_normal.x * weathering_normal.x - weathering_normal.y * weathering_normal.y);
+        weathering_normal.xz = weathering_normal.xy * -inversesqrt(weathering_normal.z);
+        weathering_normal.y = 0.0;
+        weathering_normal = getCustomTriplanarNormal(combined_normal, weathering_normal);
+        float normal_align = dot(combined_normal, weathering_normal);
+        weathering_normal = normalize(weathering_normal_mult * (weathering_normal - normal_align * combined_normal) + combined_normal);
+
+        vec3 weathering_graded_color = weathering_color;
+        if (grading_group_id_weathering > 0.0) {
+            weathering_graded_color = gradeColor(base_color, gradingMatrix(gradingPixel(grading_group_id_weathering)));
+        }
+        weathering_color = clamp(weathering_graded_color, 0.0, 1.0);
+
+        base_color = dirt_mix * (weathering_color - base_color) + base_color;
+        roughness = dirt_mix * (weathering_nar_sample.w - roughness) + roughness;
+        combined_normal = normalize(dirt_mix * (weathering_normal - combined_normal) + combined_normal);
+        ao = min(dirt_mix * (weathering_nar_sample.w - 1.0) + 1.0, ao);
+    }
+
+    vec3 tangentCombinedNormal = normalize(dbg_fragITBN * combined_normal);
+    vec3 viewDirection = normalize(fragTangentViewPosition - fragTangentFragmentPosition);
+    float view_align = max(dot(tangentCombinedNormal, viewDirection), 0.0001);
+
+    // Rock type is based on the index of the specific rock base material in the rockMaterials slice
+    switch(rock_type) {
+    case 3: // ice
+        base_color = ice_fuzz_subsurface(base_color, view_align, inv_ao);
+        break;
+    }
+
+    float metallic = material_wetness;
+    roughness = clamp(roughness, 0.0, 1.0) * 0.955 + 0.045;
 
     switch (debug) {
     case 1:
         fragColor = vec4(combined_detail_albedo, 1.0);
         break;
     case 2:
-        fragColor = vec4(detail_normal, 1.0);
+        fragColor = vec4(vec3(view_align), 1.0);
         break;
     case 3:
         fragColor = vec4(combined_normal, 1.0);
         break;
     case 4:
-        fragColor = vec4(mixed_vertex_normal, 1.0);
+        fragColor = vec4(tangentCombinedNormal, 1.0);
         break;
     case 5:
+        fragColor = vec4(mixed_vertex_normal, 1.0);
+        break;
+    case 6:
         fragColor = vec4(nad_normal, 1.0);
         break;
     default:
-        fragColor = vec4(base_color, 1.0);
+        fragColor = calculateLighting(vec4(sqrt(base_color), 1.0), roughness, metallic, 0.0, ao, tangentCombinedNormal, 1.0, 1.0);
     }
 }

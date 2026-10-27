@@ -68,4 +68,13 @@ func (ml *MaterialManager) updateRockMaterial(material *RockMaterial, mat *mater
 	ml.addAssetGradingLut(material.BaseMaterial)
 	ml.setupMaterialCommon(rockTextureNames, material, mat)
 	ml.handleGlobalBlocks(material.BaseMaterial)
+	for _, block := range material.uniformBlocks {
+		if block.name != "RockBlock" {
+			continue
+		}
+		rockType := uint32(slices.Index(rockMaterials, mat.BaseMaterial))
+		block.set("rock_type", &rockType)
+		block.setDefault("rock_type", &rockType)
+		break
+	}
 }

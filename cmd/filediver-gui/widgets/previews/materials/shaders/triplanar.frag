@@ -99,7 +99,7 @@ vec3 getTriplanarNormal(vec3 tangent_space_normal) {
     return result * 2.0 - 1.0;
 }
 
-vec3 getTriplanarCustomNormal(vec3 normal, vec3 tangent_space_normal) {
+vec3 getCustomTriplanarNormal(vec3 normal, vec3 tangent_space_normal) {
     vec3 temp;
     vec3 result;
 
