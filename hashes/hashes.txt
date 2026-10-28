@@ -96425,6 +96425,7 @@ content/fac_helldivers/equipment/attachment/underbarrel/empty_laser
 content/fac_helldivers/equipment/attachment/underbarrel/empty_laser_flashlight
 content/fac_helldivers/equipment/attachment/underbarrel/flashlight_verticalgrip
 content/fac_helldivers/equipment/attachment/underbarrel/standard_bayonet
+content/fac_helldivers/equipment/attachment/underbarrel/standard_flashlight
 content/fac_helldivers/equipment/attachment/underbarrel/standard_flashlight_pistol
 content/fac_helldivers/equipment/attachment/underbarrel/standard_laser
 content/fac_helldivers/equipment/attachment/underbarrel/standard_laser_flashlight
@@ -98193,6 +98194,7 @@ content/fac_helldivers/vehicles/shuttle_transport/animation/clamps/frv
 content/fac_helldivers/vehicles/shuttle_transport/animation/clamps/frv_releases
 content/fac_helldivers/vehicles/shuttle_transport/animation/clamps/lav
 content/fac_helldivers/vehicles/shuttle_transport/animation/clamps/lav_release
+content/fac_helldivers/vehicles/shuttle_transport/animation/clamps/tank
 content/fac_helldivers/vehicles/shuttle_transport/animation/tanker/deployed
 content/fac_helldivers/vehicles/shuttle_transport/animation/tanker/reel
 content/fac_helldivers/vehicles/shuttle_transport/animation/tanker/undeployed

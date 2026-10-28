@@ -161,7 +161,7 @@ void main() {
     nad_normal.z = max(max(nxy_sq.x, nxy_sq.y) / 16384.0, 1.0 - nad_normal.x * nad_normal.x - nad_normal.y * nad_normal.y);
     nad_normal.z = inversesqrt(nad_normal.z);
     nad_normal.xy = nad_normal.xy * -nad_normal.z;
-    nad_normal.xyz = base_normal_intensity * (nad_normal.x * uv_face_tangent.xyz + nad_normal.y * uv_face_bitangent.xyz);
+    nad_normal.xyz = base_normal_intensity * (nad_normal.x * normalize(dbg_fragTBN[0]) + nad_normal.y * normalize(dbg_fragTBN[1]));
 
     vec3 combined_normal = mixed_vertex_normal + nad_normal;
     combined_normal = triplanar_vertex_normal_lerp * (normal - combined_normal) + combined_normal;
@@ -291,10 +291,12 @@ void main() {
         combined_normal = vec3(0.0, 0.0, 1.0);
     }
 
-    float combined_normal_up_amount = 2.5 * (((clamp(combined_normal.z, -0.125, 1.0) + 0.125) / 1.125) - (1 - weathering_height_val * weathering_height_val));
+    float combined_normal_up_amount = 2.5 * (((clamp(combined_normal.y, -0.125, 1.0) + 0.125) / 1.125) - (1 - weathering_height_val * weathering_height_val));
     combined_normal_up_amount = clamp(combined_normal_up_amount / (weathering_height_val * weathering_height_val + 0.001), 0.0, 1.0);
 
     float weathering_ao = clamp(((1.0 - ao) * weathering_ao_amount) * clamp(combined_normal.z, 0.0, 1.0) - weathering_ao_cutoff, 0.0, 1.0);
+
+    dirt_mix = clamp(weathering_ao + (dirt_mix * weathering_on_dirt_amount + combined_normal_up_amount), 0.0, 1.0);
 
     if (dirt_mix != 0.0) {
         vec2 weathering_uvs = getCustomTriplanarUVs(combined_normal) * weathering_tiling;
@@ -312,7 +314,7 @@ void main() {
 
         vec3 weathering_graded_color = weathering_color;
         if (grading_group_id_weathering > 0.0) {
-            weathering_graded_color = gradeColor(base_color, gradingMatrix(gradingPixel(grading_group_id_weathering)));
+            weathering_graded_color = gradeColor(weathering_color, gradingMatrix(gradingPixel(grading_group_id_weathering)));
         }
         weathering_color = clamp(weathering_graded_color, 0.0, 1.0);
 
@@ -322,8 +324,8 @@ void main() {
         ao = min(dirt_mix * (weathering_nar_sample.w - 1.0) + 1.0, ao);
     }
 
-    vec3 tangentCombinedNormal = -normalize(dbg_fragITBN * combined_normal);
-    vec3 viewDirection = -normalize(fragTangentViewPosition - fragTangentFragmentPosition);
+    vec3 tangentCombinedNormal = normalize(dbg_fragITBN * combined_normal);
+    vec3 viewDirection = normalize(fragTangentViewPosition - fragTangentFragmentPosition);
     float view_align = max(dot(tangentCombinedNormal, viewDirection), 0.0001);
 
     float metallic = material_wetness;
