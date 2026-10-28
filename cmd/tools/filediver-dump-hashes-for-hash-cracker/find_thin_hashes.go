@@ -76,6 +76,35 @@ func handleVisibilityMasks(prt app.Printer, a *app.App, known map[string]bool, u
 	return 0
 }
 
+func handleWeaponCustomization(prt app.Printer, a *app.App, known map[string]bool, unknown map[uint32]bool) int {
+	getResource := func(id stingray.FileID, typ stingray.DataType) (data []byte, exists bool, err error) {
+		if f, ok := a.DataDir.Files[id]; ok {
+			if int(typ) >= len(f) {
+				return nil, false, nil
+			}
+			exists = true
+			data, err = a.DataDir.Read(id, typ)
+			return
+		}
+		return nil, false, nil
+	}
+	customizations, err := datalib.ParseWeaponCustomizationSettings(getResource, make(map[uint32]string))
+	if err != nil {
+		prt.Errorf("parsing visibility masks: %v", err)
+		return 0
+	}
+	for _, customization := range customizations {
+		for _, item := range customization.Items {
+			if id, exists := a.ThinHashes[item.ID]; exists {
+				known[id] = true
+			} else {
+				unknown[item.ID.Value] = true
+			}
+		}
+	}
+	return 0
+}
+
 func handleAnimationBeats(prt app.Printer, a *app.App, id stingray.FileID, known map[string]bool, unknown map[uint32]bool) int {
 	b, err := a.DataDir.Read(id, stingray.DataMain)
 	if err != nil {

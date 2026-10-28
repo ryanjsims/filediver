@@ -66,7 +66,6 @@ func main() {
 		unknownStrs := make(map[string]bool)
 		for h, info := range typeLib.Types {
 			if s, ok := datalib.DLHashesToStrings[h]; ok {
-				fmt.Println(info.Name, fmt.Sprintf("0x%08x##%d", uint32(h), info.NameLength))
 				known[s] = true
 			} else {
 				unknownStrs[fmt.Sprintf("0x%08x##%d", uint32(h), info.NameLength)] = true
@@ -103,6 +102,7 @@ func main() {
 			}
 		}
 		handleVisibilityMasks(prt, a, known, unknown)
+		handleWeaponCustomization(prt, a, known, unknown)
 		writeItems(prt, "target_murmur64a_thin.txt", maps.Keys(unknown))
 	}
 

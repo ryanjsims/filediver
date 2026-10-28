@@ -91,7 +91,7 @@ type WeaponCasingEffectInfo struct {
 type SimpleWeaponCustomizableItem struct {
 	NameCased      string                             `json:"name_cased"`
 	DebugName      string                             `json:"debug_name"`
-	ID             stingray.ThinHash                  `json:"id"`
+	ID             string                             `json:"id"`
 	NameUpper      string                             `json:"name_upper"`
 	Description    string                             `json:"description"`
 	Fluff          string                             `json:"fluff"`
@@ -116,7 +116,7 @@ func (customization WeaponCustomizationSettings) ToSimple(lookupHash func(stingr
 			NameUpper:      item.NameUpper,
 			Fluff:          item.Fluff,
 			Description:    item.Description,
-			ID:             item.ID,
+			ID:             lookupThinHash(item.ID),
 			Archive:        lookupHash(item.Archive),
 			AddPath:        lookupHash(item.AddPath),
 			Icon:           lookupHash(item.Icon),
