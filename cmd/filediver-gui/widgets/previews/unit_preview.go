@@ -94,6 +94,7 @@ func (obj *unitPreviewObject) genObjects(textures bool, numIbos int32) {
 func (obj unitPreviewObject) deleteObjects(ml *preview_mats.MaterialManager) {
 	gl.DeleteVertexArrays(1, &obj.vao)
 	gl.DeleteBuffers(1, &obj.vbo)
+	gl.DeleteBuffers(1, &obj.imbo)
 	if len(obj.ibos) > 0 {
 		gl.DeleteBuffers(int32(len(obj.ibos)), &obj.ibos[0])
 	}
@@ -663,10 +664,11 @@ func (pv *UnitPreviewState) getNodeUnitFileID(nodeId stingray.Hash) (stingray.Fi
 	return hash, contains
 }
 
-func (pv *UnitPreviewState) LoadLevel(fileID stingray.Hash, mainData []byte) error {
+func (pv *UnitPreviewState) LoadLevel(fileID stingray.Hash, mainData []byte, entityInfo *entity.Entity) error {
 	if pv.nodes == nil {
 		pv.nodes = make(map[stingray.Hash]unitPreviewNode)
 	}
+	pv.ml.SetEntity(entityInfo)
 
 	pv.maxViewDistance = 0.001
 
@@ -887,10 +889,11 @@ func (pv *UnitPreviewState) LoadLevel(fileID stingray.Hash, mainData []byte) err
 	return pv.finalizeObjectMaterials()
 }
 
-func (pv *UnitPreviewState) LoadPrefab(fileID stingray.Hash, mainData []byte) error {
+func (pv *UnitPreviewState) LoadPrefab(fileID stingray.Hash, mainData []byte, entityInfo *entity.Entity) error {
 	if pv.nodes == nil {
 		pv.nodes = make(map[stingray.Hash]unitPreviewNode)
 	}
+	pv.ml.SetEntity(entityInfo)
 
 	pv.maxViewDistance = 0.001
 
@@ -997,10 +1000,11 @@ func (pv *UnitPreviewState) loadPrefabInfo(fileID stingray.FileID, info *prefab.
 	return contents, nil
 }
 
-func (pv *UnitPreviewState) LoadUnit(fileID stingray.Hash, mainData, gpuData []byte) error {
+func (pv *UnitPreviewState) LoadUnit(fileID stingray.Hash, mainData, gpuData []byte, entityInfo *entity.Entity) error {
 	if pv.nodes == nil {
 		pv.nodes = make(map[stingray.Hash]unitPreviewNode)
 	}
+	pv.ml.SetEntity(entityInfo)
 
 	unitID := stingray.NewFileID(fileID, UNIT)
 	pv.root = unitPreviewNode{

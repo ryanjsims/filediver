@@ -106153,6 +106153,8 @@ lib
 liberty_day_beer_bottle
 liberty_day_beer_bottle_broken
 liberty_day_beer_crate
+liberty_day_party_mug
+liberty_day_poster_01
 liberty_day_shield
 lieutentant_corpse_
 lieutentant_corpse_01

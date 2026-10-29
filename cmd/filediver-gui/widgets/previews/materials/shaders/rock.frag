@@ -13,10 +13,14 @@ in mat3 dbg_fragITBN;
 
 uniform sampler2D base_normal_ao_dirt;
 uniform sampler2D detail_mask_;
+uniform sampler2D snow_glints_tiler;
 uniform sampler2D weathering_albedo;
 uniform sampler2D weathering_nar;
 uniform sampler2DArray triplanar_detail_albedo;
 uniform sampler2DArray triplanar_detail_data;
+uniform sampler2DArray snow_pnrb_array;
+
+uniform mat4 inv_view;
 
 layout(shared, binding = 0) uniform RockBlock {
     uint rock_type;
@@ -61,6 +65,24 @@ layout(shared, binding = 0) uniform RockBlock {
     float ice_subsurface_wrap;
     float material_input_y;
     float material_wetness;
+    float snow_amount;
+    vec3 snow_base_color;
+    vec3 snow_fuzz_color;
+    float snow_glint_amount;
+    float snow_glint_intensity;
+    float snow_glint_roughness;
+    float snow_glint_size;
+    float snow_index0;
+    float snow_normal_displacement;
+    float snow_roughness;
+    float snow_specular;
+    float snow_ss_thickness;
+    vec3 snow_subsurface_color;
+    float snow_subsurface_diffusion;
+    float snow_subsurface_intensity;
+    float snow_subsurface_thickness;
+    float snow_subsurface_wrap;
+    float snow_up_displacement;
     float subsurface_occlusion_intensity;
     float subsurface_occlusion_maskcurve;
     float tiler_ao_intensity;
@@ -294,11 +316,11 @@ void main() {
     float combined_normal_up_amount = 2.5 * (((clamp(combined_normal.y, -0.125, 1.0) + 0.125) / 1.125) - (1 - weathering_height_val * weathering_height_val));
     combined_normal_up_amount = clamp(combined_normal_up_amount / (weathering_height_val * weathering_height_val + 0.001), 0.0, 1.0);
 
-    float weathering_ao = clamp(((1.0 - ao) * weathering_ao_amount) * clamp(combined_normal.z, 0.0, 1.0) - weathering_ao_cutoff, 0.0, 1.0);
+    float weathering_ao = clamp(((1.0 - ao) * weathering_ao_amount) * clamp(combined_normal.y, 0.0, 1.0) - weathering_ao_cutoff, 0.0, 1.0);
 
     dirt_mix = clamp(weathering_ao + (dirt_mix * weathering_on_dirt_amount + combined_normal_up_amount), 0.0, 1.0);
 
-    if (dirt_mix != 0.0) {
+    if (dirt_mix != 0.0 && rock_type != 2 /*not snowy*/) {
         vec2 weathering_uvs = getCustomTriplanarUVs(combined_normal) * weathering_tiling;
         vec3 weathering_color = texture(weathering_albedo, weathering_uvs).xyz;
         vec4 weathering_nar_sample = texture(weathering_nar, weathering_uvs);
@@ -324,9 +346,58 @@ void main() {
         ao = min(dirt_mix * (weathering_nar_sample.w - 1.0) + 1.0, ao);
     }
 
+    vec3 fuzz_color = vec3(0.0);
+    vec3 subsurface_color = vec3(0.0);
+    float subsurface_wrap = 0.5;
+    float subsurface_intensity = 0.0;
+    float subsurface_diffusion = 0.6;
+    float subsurface_thickness = 0.075;
+    float specular = 0.5;
+    vec3 perturbed_normal = vec3(0.0, 0.0, 1.0);
+    vec3 perturbed_triplanar = perturbed_normal;
+    vec4 pnrb_sample;
+    if (dirt_mix != 0.0 && rock_type == 2 /*snowy*/) {
+        vec3 snow_uvs = vec3(getCustomTriplanarUVs(combined_normal) * weathering_tiling, snow_index0);
+        pnrb_sample = texture(snow_pnrb_array, snow_uvs);
+
+        perturbed_normal = vec3(pnrb_sample.xy * 2.0 - 1.0, 0.0);
+        vec2 pnrb_sq = perturbed_normal.xy * perturbed_normal.xy;
+        perturbed_normal.z = max(max(pnrb_sq.x, pnrb_sq.y) / 16384.0, 1.0 - perturbed_normal.x * perturbed_normal.x - perturbed_normal.y * perturbed_normal.y);
+        perturbed_normal.xz = perturbed_normal.xy * -inversesqrt(perturbed_normal.z);
+        perturbed_normal.y = 0.0;
+        perturbed_normal = getCustomTriplanarNormal(combined_normal, perturbed_normal);
+        perturbed_triplanar = perturbed_normal;
+        perturbed_normal = perturbed_normal - dot(combined_normal, perturbed_normal) * combined_normal;
+
+        vec2 glitter_uvs = getCustomTriplanarUVs(combined_normal) * snow_glint_size;
+        vec3 glints_sample = texture(snow_glints_tiler, glitter_uvs).xyz * 2.0 - 1.0;
+        vec3 glint_normal = vec3(glints_sample.xy, sqrt(abs(1.0 - glints_sample.x * glints_sample.x - glints_sample.y * glints_sample.y)));
+        float glint_align = dot(glint_normal, vec3(inv_view[0].y, inv_view[1].y, inv_view[2].y));
+        glint_align = clamp(glint_align - (1.0 - snow_glint_amount), 0.0, 1.0);
+        glint_align = clamp(glint_align / (1.0 - snow_glint_amount), 0.0, 1.0);
+
+        vec3 snow_color = gamma(max(abs(snow_base_color), vec3(0.0001)), pnrb_sample.z + 1.0);
+        base_color = dirt_mix * (snow_color - base_color) + base_color;
+
+        subsurface_color = dirt_mix * gamma(max(abs(snow_subsurface_color), vec3(0.0001)), pnrb_sample.z - pnrb_sample.w * 0.25 + 1.0);
+        fuzz_color = dirt_mix * snow_fuzz_color;
+
+        subsurface_intensity = dirt_mix * snow_subsurface_intensity;
+        subsurface_wrap = dirt_mix * (snow_subsurface_wrap - 0.5) + 0.5;
+        subsurface_diffusion = dirt_mix * (snow_subsurface_diffusion - 0.6) + 0.6;
+        subsurface_thickness = dirt_mix * (snow_subsurface_thickness - 0.075) + 0.075;
+        specular = dirt_mix * (snow_specular * pnrb_sample.w - 0.5) + 0.5;
+
+        roughness = dirt_mix * (clamp(glints_sample.z * snow_glint_roughness + snow_roughness - glint_align, 0.0, 1.0) - roughness) + roughness;
+        combined_normal = normalize(dirt_mix * dirt_mix * (normalize(combined_normal + perturbed_normal) - combined_normal) + combined_normal);
+
+        ao = dirt_mix * 0.5 * (1.0 - ao) + ao;
+    }
+
     vec3 tangentCombinedNormal = normalize(dbg_fragITBN * combined_normal);
     vec3 viewDirection = normalize(fragTangentViewPosition - fragTangentFragmentPosition);
     float view_align = max(dot(tangentCombinedNormal, viewDirection), 0.0001);
+    float presnow_view_align = view_align;
 
     float metallic = material_wetness;
     roughness = clamp(roughness, 0.0, 1.0) * 0.955 + 0.045;
@@ -336,6 +407,16 @@ void main() {
     switch(rock_type) {
     case 1: // emissive
         emissive_color = emissive(base_color, roughness, ao, obj_height);
+        break;
+    case 2: // snow
+        base_color = max(dirt_mix - view_align * dirt_mix, 0.0) * (clamp(fuzz_color, 0.0, 1.0) - base_color) + base_color;
+        subsurface_wrap = clamp(subsurface_wrap, 0.0, 1.0);
+        subsurface_intensity = clamp(subsurface_intensity, 0.0, 1.0);
+        view_align = subsurface_wrap * (1.0 - 2.0 * view_align) + view_align;
+        view_align = curve(abs(view_align), abs(subsurface_wrap - 0.5) * 2.0 + 1.0);
+        view_align = (view_align - abs(subsurface_wrap - 0.5) + 0.5) * subsurface_intensity;
+        base_color = view_align * (subsurface_color - base_color) + base_color;
+        metallic = view_align * (metallic - specular) + specular;
         break;
     case 3: // ice
         base_color = ice_fuzz_subsurface(base_color, view_align, inv_ao);
@@ -350,10 +431,25 @@ void main() {
         fragColor = vec4(vec3(view_align), 1.0);
         break;
     case 3:
-        fragColor = vec4(combined_normal, 1.0);
+        fragColor = vec4(vec3(presnow_view_align), 1.0);
         break;
     case 4:
+        fragColor = vec4(combined_normal, 1.0);
+        break;
+    case 5:
         fragColor = vec4(tangentCombinedNormal, 1.0);
+        break;
+    case 6:
+        fragColor = vec4(vec3(inv_view[0].y, inv_view[1].y, inv_view[2].y), 1.0);
+        break;
+    case 7:
+        fragColor = vec4(vec3(dirt_mix), 1.0);
+        break;
+    case 8:
+        fragColor = vec4(vec3(subsurface_wrap), 1.0);
+        break;
+    case 9:
+        fragColor = vec4(vec3(subsurface_intensity), 1.0);
         break;
     default:
         fragColor = calculateLighting(vec4(sqrt(base_color), 1.0), roughness, metallic, 0.0, ao, tangentCombinedNormal, 1.0, 1.0);
