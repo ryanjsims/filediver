@@ -63,7 +63,7 @@ layout(shared, binding = 0) uniform RockBlock {
     float ice_subsurface_intensity;
     float ice_subsurface_thickness;
     float ice_subsurface_wrap;
-    float material_input_y;
+    float weathering_input;
     float material_wetness;
     float snow_amount;
     vec3 snow_base_color;
@@ -294,7 +294,7 @@ void main() {
     base_color = dirt_mix * dirt_metallic * (dirt_color - base_color) + base_color;
 
     inv_ao = abs(1.0 - ao);
-    float weathering_coverage_amount = clamp(material_input_y * weathering_coverage_multiplier + weathering_coverage, 0.0, 1.0);
+    float weathering_coverage_amount = clamp(weathering_input * weathering_coverage_multiplier + weathering_coverage, 0.0, 1.0);
     float weathering_height_val = curve(1.0 - clamp(obj_height / max(weathering_height, 0.001), 0.0, 1.0), max(weathering_height_curve, 0.001));
 
     if (weathering_height > 99.9) {
@@ -402,6 +402,7 @@ void main() {
     float metallic = material_wetness;
     roughness = clamp(roughness, 0.0, 1.0) * 0.955 + 0.045;
 
+    float subsurface = 0.0;
     vec3 emissive_color = vec3(0.0);
     // Rock type is based on the index of the specific rock base material in the rockMaterials slice
     switch(rock_type) {
@@ -412,11 +413,11 @@ void main() {
         base_color = max(dirt_mix - view_align * dirt_mix, 0.0) * (clamp(fuzz_color, 0.0, 1.0) - base_color) + base_color;
         subsurface_wrap = clamp(subsurface_wrap, 0.0, 1.0);
         subsurface_intensity = clamp(subsurface_intensity, 0.0, 1.0);
-        view_align = subsurface_wrap * (1.0 - 2.0 * view_align) + view_align;
-        view_align = curve(abs(view_align), abs(subsurface_wrap - 0.5) * 2.0 + 1.0);
-        view_align = (view_align - abs(subsurface_wrap - 0.5) + 0.5) * subsurface_intensity;
-        base_color = view_align * (subsurface_color - base_color) + base_color;
-        metallic = view_align * (metallic - specular) + specular;
+        subsurface = subsurface_wrap * (1.0 - 2.0 * view_align) + view_align;
+        subsurface = curve(abs(subsurface), abs(subsurface_wrap - 0.5) * 2.0 + 1.0);
+        subsurface = (subsurface - abs(subsurface_wrap - 0.5) + 0.5) * subsurface_intensity;
+        base_color = subsurface * (subsurface_color - base_color) + base_color;
+        metallic = subsurface * (metallic - specular) + specular;
         break;
     case 3: // ice
         base_color = ice_fuzz_subsurface(base_color, view_align, inv_ao);
@@ -425,31 +426,28 @@ void main() {
 
     switch (debug) {
     case 1:
-        fragColor = vec4(emissive_color, 1.0);
+        fragColor = vec4(sqrt(base_color), 1.0);
         break;
     case 2:
-        fragColor = vec4(vec3(view_align), 1.0);
+        fragColor = vec4(vec3(roughness), 1.0);
         break;
     case 3:
-        fragColor = vec4(vec3(presnow_view_align), 1.0);
+        fragColor = vec4(vec3(ao), 1.0);
         break;
     case 4:
-        fragColor = vec4(combined_normal, 1.0);
+        fragColor = vec4(vec3(metallic), 1.0);
         break;
     case 5:
-        fragColor = vec4(tangentCombinedNormal, 1.0);
+        fragColor = vec4(vec3(subsurface), 1.0);
         break;
     case 6:
-        fragColor = vec4(vec3(inv_view[0].y, inv_view[1].y, inv_view[2].y), 1.0);
+        fragColor = vec4(vec3(view_align), 1.0);
         break;
     case 7:
-        fragColor = vec4(vec3(dirt_mix), 1.0);
+        fragColor = vec4(combined_normal, 1.0);
         break;
     case 8:
-        fragColor = vec4(vec3(subsurface_wrap), 1.0);
-        break;
-    case 9:
-        fragColor = vec4(vec3(subsurface_intensity), 1.0);
+        fragColor = vec4(viewDirection, 1.0);
         break;
     default:
         fragColor = calculateLighting(vec4(sqrt(base_color), 1.0), roughness, metallic, 0.0, ao, tangentCombinedNormal, 1.0, 1.0);

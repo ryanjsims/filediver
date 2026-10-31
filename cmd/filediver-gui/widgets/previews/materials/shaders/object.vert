@@ -29,7 +29,6 @@ out VertexOutput
 uniform mat4 projection;
 uniform mat4 view;
 uniform mat4 model;
-//uniform mat3 normalMat; // normal matrix = transpose(inverse(model))
 uniform vec3 viewPosition;
 
 const mat4 stingrayToGL = mat4(
