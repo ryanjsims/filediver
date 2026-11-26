@@ -714,6 +714,8 @@ func (a *guiApp) drawBrowserWindow() {
 								stingray.Sum("bk2"),
 								stingray.Sum("texture"),
 								stingray.Sum("material"),
+								stingray.Sum("package"),
+								stingray.Sum("state_machine"),
 								stingray.Sum("wwise_bank"),
 								stingray.Sum("wwise_stream"),
 								stingray.Sum("unit"),
