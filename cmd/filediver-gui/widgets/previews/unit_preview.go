@@ -1313,7 +1313,10 @@ func (pv *UnitPreviewState) loadUnit(fileID stingray.FileID, mainData, gpuData [
 			uvsSize := len(mesh.UVCoords[0]) * 2 * 4
 			tangentsSize := len(mesh.Tangents) * 4 * 4
 			bitangentsSize := len(mesh.Bitangents) * 3 * 4
-			boneIndicesSize := len(mesh.BoneIndices[0]) * 4
+			boneIndicesSize := 0
+			if len(mesh.BoneIndices) > 0 {
+				boneIndicesSize = len(mesh.BoneIndices[0]) * 4
+			}
 			boneWeightsSize := len(mesh.BoneWeights) * 4 * 4
 
 			gl.BindBuffer(gl.ARRAY_BUFFER, object.vbo)
