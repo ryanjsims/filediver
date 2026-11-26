@@ -26,6 +26,7 @@ const (
 type layerStateEntry struct {
 	idx             uint32
 	triggeringEvent stingray.ThinHash
+	highlight       float32
 }
 
 type StateMachinePreview struct {
@@ -106,6 +107,60 @@ func (pv *StateMachinePreview) drawAnimationsTable(idx int, state state_machine.
 	}
 }
 
+func (pv *StateMachinePreview) drawLayer(idx int, layer state_machine.Layer) {
+	const tableFlags = imgui.TableFlagsResizable | imgui.TableFlagsBorders | imgui.TableFlagsRowBg
+	if imgui.BeginTableV(fmt.Sprintf("##Layer %v", idx), 2, tableFlags, imgui.NewVec2(0, 0), 0) {
+		state := layer.States[pv.layerStates[idx].idx]
+		imgui.TableSetupColumnV(fmt.Sprintf("State: %v", pv.lookupHash(state.Name)), imgui.TableColumnFlagsWidthStretch, 1, 0)
+		imgui.TableSetupColumnV("", imgui.TableColumnFlagsWidthStretch, 2, 0)
+		imgui.TableSetupScrollFreeze(0, 1)
+		imgui.TableHeadersRow()
+
+		if pv.layerStates[idx].triggeringEvent.Value != 0x0 {
+			imgui.TableNextColumn()
+			imgui.Text("Triggering Event")
+			imgui.TableNextColumn()
+			imutils.CopyableTextf("%v", pv.lookupThinHash(pv.layerStates[idx].triggeringEvent))
+		}
+
+		imgui.TableNextColumn()
+		imgui.Text("Additive")
+		imgui.TableNextColumn()
+		imgui.BeginDisabled()
+		imgui.Checkbox("", &state.Additive)
+		imgui.EndDisabled()
+
+		imgui.TableNextColumn()
+		imgui.Text("Animations")
+		imgui.TableNextColumn()
+		imgui.PushTextWrapPos()
+		pv.drawAnimationsTable(idx, state)
+
+		imgui.TableNextColumn()
+		imgui.Text("End Event")
+		imgui.TableNextColumn()
+		if state.EmitEndEvent.Value != 0x0 {
+			imutils.CopyableTextf("%v", pv.lookupThinHash(state.EmitEndEvent))
+		} else {
+			imgui.Text("<none>")
+		}
+
+		imgui.TableNextColumn()
+		imgui.Text("Group ID")
+		imgui.TableNextColumn()
+		imutils.CopyableTextf("%v", pv.lookupThinHash(state.GroupID))
+
+		if state.RagdollName.Value != 0x0 {
+			imgui.TableNextColumn()
+			imgui.Text("Ragdoll Name")
+			imgui.TableNextColumn()
+			imutils.CopyableTextf("%v", pv.lookupThinHash(state.RagdollName))
+		}
+
+		imgui.EndTable()
+	}
+}
+
 func (pv *StateMachinePreview) drawStates() {
 	if imgui.Button("Reset") {
 		pv.Reset()
@@ -122,58 +177,8 @@ func (pv *StateMachinePreview) drawStates() {
 		imgui.EndCombo()
 	}
 	if imgui.BeginChildStr("##Layers Child") {
-		const tableFlags = imgui.TableFlagsResizable | imgui.TableFlagsBorders | imgui.TableFlagsRowBg
 		for idx, layer := range pv.Layers {
-			if imgui.BeginTableV(fmt.Sprintf("##Layer %v", idx), 2, tableFlags, imgui.NewVec2(0, 0), 0) {
-				state := layer.States[pv.layerStates[idx].idx]
-				imgui.TableSetupColumnV(fmt.Sprintf("State: %v", pv.lookupHash(state.Name)), imgui.TableColumnFlagsWidthStretch, 1, 0)
-				imgui.TableSetupColumnV("", imgui.TableColumnFlagsWidthStretch, 2, 0)
-				imgui.TableSetupScrollFreeze(0, 1)
-				imgui.TableHeadersRow()
-
-				if pv.layerStates[idx].triggeringEvent.Value != 0x0 {
-					imgui.TableNextColumn()
-					imgui.Text("Triggering Event")
-					imgui.TableNextColumn()
-					imutils.CopyableTextf("%v", pv.lookupThinHash(pv.layerStates[idx].triggeringEvent))
-				}
-
-				imgui.TableNextColumn()
-				imgui.Text("Additive")
-				imgui.TableNextColumn()
-				imgui.BeginDisabled()
-				imgui.Checkbox("", &state.Additive)
-				imgui.EndDisabled()
-
-				imgui.TableNextColumn()
-				imgui.Text("Animations")
-				imgui.TableNextColumn()
-				imgui.PushTextWrapPos()
-				pv.drawAnimationsTable(idx, state)
-
-				imgui.TableNextColumn()
-				imgui.Text("End Event")
-				imgui.TableNextColumn()
-				if state.EmitEndEvent.Value != 0x0 {
-					imutils.CopyableTextf("%v", pv.lookupThinHash(state.EmitEndEvent))
-				} else {
-					imgui.Text("<none>")
-				}
-
-				imgui.TableNextColumn()
-				imgui.Text("Group ID")
-				imgui.TableNextColumn()
-				imutils.CopyableTextf("%v", pv.lookupThinHash(state.GroupID))
-
-				if state.RagdollName.Value != 0x0 {
-					imgui.TableNextColumn()
-					imgui.Text("Ragdoll Name")
-					imgui.TableNextColumn()
-					imutils.CopyableTextf("%v", pv.lookupThinHash(state.RagdollName))
-				}
-
-				imgui.EndTable()
-			}
+			pv.drawLayer(idx, layer)
 		}
 	}
 	imgui.EndChild()
