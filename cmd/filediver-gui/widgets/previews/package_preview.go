@@ -52,7 +52,7 @@ func (pv *PackagePreview) updateShownFiles() {
 	})
 }
 
-var colorRegex = regexp.MustCompile("<c[=#A-Z]+>(.*?)<\\/c>")
+var colorRegex = regexp.MustCompile(`<c[=#A-Z]+>(.*?)<\/c>`)
 
 func (pv *PackagePreview) drawArmorSet(armorSet datalib.ArmorSet) {
 	const tableFlags = imgui.TableFlagsResizable | imgui.TableFlagsBorders | imgui.TableFlagsRowBg

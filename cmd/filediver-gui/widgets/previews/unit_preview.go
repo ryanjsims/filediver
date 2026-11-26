@@ -70,7 +70,7 @@ type unitPreviewObject struct {
 	hasVisibilityMasks int32
 }
 
-func (obj *unitPreviewObject) genObjects(textures bool, numIbos int32) {
+func (obj *unitPreviewObject) genObjects(numIbos int32) {
 	gl.GenVertexArrays(1, &obj.vao)
 	gl.GenBuffers(1, &obj.vbo)
 	if numIbos > 0 {
@@ -359,7 +359,7 @@ func (pv *UnitPreviewState) UpdateAssetOverrides(entityInfo *entity.Entity) {
 	}
 }
 
-var objectRegex = regexp.MustCompile("^(g_)?(\\w*?)_?(cull|shadow|rubble|rubble_shadow|debris|shadowmesh|c)?_?(\\d*)?_?(LOD\\d)?$")
+var objectRegex = regexp.MustCompile(`^(g_)?(\w*?)_?(cull|shadow|rubble|rubble_shadow|debris|shadowmesh|c)?_?(\d*)?_?(LOD\d)?$`)
 
 // These hashes aren't actually known, so I'm shimming them so previews work
 var vistaMeshes = map[stingray.ThinHash]string{
@@ -904,9 +904,6 @@ func (pv *UnitPreviewState) LoadLevel(fileID stingray.Hash, mainData []byte, ent
 	pv.rootHash = stingray.NewFileID(fileID, LEVEL)
 	pv.maxViewDistance = pv.getMaxZoom(pv.root, pv.rootHash, false)
 
-	if err != nil {
-		return err
-	}
 	return pv.finalizeObjectMaterials()
 }
 
@@ -1232,7 +1229,7 @@ func (pv *UnitPreviewState) loadUnit(fileID stingray.FileID, mainData, gpuData [
 
 		// Create index buffers
 		{
-			object.genObjects(true, 0)
+			object.genObjects(0)
 			object.ibos = make([]uint32, len(mesh.Indices))
 			gl.GenBuffers(int32(len(object.ibos)), &object.ibos[0])
 
@@ -1371,7 +1368,7 @@ func (pv *UnitPreviewState) loadUnit(fileID stingray.FileID, mainData, gpuData [
 		// Upload bounding box data
 		{
 			boundingBox := unitPreviewObject{}
-			boundingBox.genObjects(false, 1)
+			boundingBox.genObjects(1)
 			gl.BindVertexArray(boundingBox.vao)
 
 			verts := pv.getAABBVertices(fileID, name)
@@ -1442,7 +1439,7 @@ func (pv *UnitPreviewState) loadUnit(fileID stingray.FileID, mainData, gpuData [
 			pv.skeletons = make(map[stingray.FileID]unitPreviewObject)
 		}
 		skeleton := unitPreviewObject{}
-		skeleton.genObjects(false, 1)
+		skeleton.genObjects(1)
 		gl.BindVertexArray(skeleton.vao)
 		gl.BindBuffer(gl.ARRAY_BUFFER, skeleton.vbo)
 		gl.BufferData(gl.ARRAY_BUFFER, len(skeletonVertices)*3*4, gl.Ptr(skeletonVertices), gl.STATIC_DRAW)
@@ -1699,7 +1696,7 @@ func (pv *UnitPreviewState) loadSpeedtree(speedtreeID stingray.FileID, mainData,
 
 	// Create index buffers
 	{
-		object.genObjects(true, 0)
+		object.genObjects(0)
 		object.ibos = make([]uint32, lod0.MeshCount)
 		gl.GenBuffers(int32(len(object.ibos)), &object.ibos[0])
 
@@ -1891,7 +1888,7 @@ func (pv *UnitPreviewState) loadSpeedtree(speedtreeID stingray.FileID, mainData,
 	// Upload bounding box data
 	{
 		boundingBox := unitPreviewObject{}
-		boundingBox.genObjects(false, 1)
+		boundingBox.genObjects(1)
 		gl.BindVertexArray(boundingBox.vao)
 
 		verts := pv.getAABBVertices(speedtreeID, name)
@@ -1946,7 +1943,7 @@ func (pv *UnitPreviewState) loadSpeedtree(speedtreeID stingray.FileID, mainData,
 		skeletonVertices := []mgl32.Vec3{{0.0, 0.0, 0.0}, {0.0, 1.0, 0.0}}
 		skeletonIndices := []uint32{0, 1}
 		skeleton := unitPreviewObject{}
-		skeleton.genObjects(false, 1)
+		skeleton.genObjects(1)
 		gl.BindVertexArray(skeleton.vao)
 		gl.BindBuffer(gl.ARRAY_BUFFER, skeleton.vbo)
 		gl.BufferData(gl.ARRAY_BUFFER, len(skeletonVertices)*3*4, gl.Ptr(skeletonVertices), gl.STATIC_DRAW)
@@ -2175,7 +2172,7 @@ func (pv *UnitPreviewState) initDrawList(hash stingray.FileID, name string) {
 	}
 }
 
-func (pv *UnitPreviewState) drawLists(size imgui.Vec2, model, view, projection mgl32.Mat4, viewPosition mgl32.Vec3) {
+func (pv *UnitPreviewState) drawLists(_ imgui.Vec2, model, view, projection mgl32.Mat4, viewPosition mgl32.Vec3) {
 	gl.Enable(gl.DEPTH_TEST)
 	sortedFileIds := slices.SortedFunc(maps.Keys(pv.objects), func(a, b stingray.FileID) int {
 		return stingray.Hash.Cmp(a.Name, b.Name)
@@ -2261,7 +2258,7 @@ func (pv *UnitPreviewState) drawLists(size imgui.Vec2, model, view, projection m
 	gl.PolygonMode(gl.FRONT_AND_BACK, gl.FILL)
 }
 
-func (pv *UnitPreviewState) drawListsNormalVis(size imgui.Vec2, model, view, projection mgl32.Mat4) {
+func (pv *UnitPreviewState) drawListsNormalVis(_ imgui.Vec2, model, view, projection mgl32.Mat4) {
 	gl.Enable(gl.DEPTH_TEST)
 	sortedFileIds := slices.SortedFunc(maps.Keys(pv.objects), func(a, b stingray.FileID) int {
 		return stingray.Hash.Cmp(a.Name, b.Name)
@@ -2327,7 +2324,7 @@ func (pv *UnitPreviewState) drawListsNormalVis(size imgui.Vec2, model, view, pro
 	gl.PolygonMode(gl.FRONT_AND_BACK, gl.FILL)
 }
 
-func (pv *UnitPreviewState) drawListsBoundingBoxes(size imgui.Vec2, model, view, projection mgl32.Mat4) {
+func (pv *UnitPreviewState) drawListsBoundingBoxes(_ imgui.Vec2, model, view, projection mgl32.Mat4) {
 	if !pv.boundingBoxMaterial.Use() {
 		return
 	}
@@ -2379,7 +2376,7 @@ func (pv *UnitPreviewState) drawListsBoundingBoxes(size imgui.Vec2, model, view,
 
 const filediverSkeleton = "filediver_skeleton"
 
-func (pv *UnitPreviewState) drawListsSkeletons(size imgui.Vec2, model, view, projection mgl32.Mat4) {
+func (pv *UnitPreviewState) drawListsSkeletons(_ imgui.Vec2, model, view, projection mgl32.Mat4) {
 	if !pv.boundingBoxMaterial.Use() {
 		return
 	}
