@@ -22,6 +22,7 @@ import (
 	"github.com/xypwn/filediver/stingray/entity"
 	stingray_package "github.com/xypwn/filediver/stingray/package"
 	"github.com/xypwn/filediver/stingray/shading_environment"
+	"github.com/xypwn/filediver/stingray/state_machine"
 	stingray_strings "github.com/xypwn/filediver/stingray/strings"
 	"github.com/xypwn/filediver/stingray/ttf"
 	"github.com/xypwn/filediver/stingray/unit/material"
@@ -43,21 +44,23 @@ const (
 	AutoPreviewXAML
 	AutoPreviewFont
 	AutoPreviewPackage
+	AutoPreviewStateMachine
 )
 
 type AutoPreview struct {
 	activeType AutoPreviewType
 	activeID   stingray.FileID
 	previews   struct {
-		unit     *UnitPreviewState
-		audio    *WwisePreview
-		video    *BinkPreview
-		texture  *ImagePreview
-		strings  *StringsPreview
-		_package *PackagePreview
-		material *MaterialPreview
-		xaml     *XamlPreview
-		font     *FontPreview
+		unit         *UnitPreviewState
+		audio        *WwisePreview
+		video        *BinkPreview
+		texture      *ImagePreview
+		strings      *StringsPreview
+		_package     *PackagePreview
+		material     *MaterialPreview
+		xaml         *XamlPreview
+		font         *FontPreview
+		stateMachine *StateMachinePreview
 	}
 
 	hashes               map[stingray.Hash]string
@@ -124,6 +127,7 @@ func NewAutoPreview(otoCtx *oto.Context, audioSampleRate int, hashes map[stingra
 	pv.previews.material = NewMaterialPreview()
 	pv.previews.xaml = NewXamlPreview()
 	pv.previews.font = NewFontPreview()
+	pv.previews.stateMachine = NewStateMachinePreview(pv.lookupHash, pv.lookupThinHash)
 	return pv, nil
 }
 
@@ -373,6 +377,20 @@ func (pv *AutoPreview) LoadFile(ctx context.Context, fileID stingray.FileID, max
 			return
 		}
 		pv.previews._package.Load(data, fileID)
+	case stingray.Sum("state_machine"):
+		pv.activeType = AutoPreviewStateMachine
+		if err := loadFiles(stingray.DataMain); err != nil {
+			pv.err = err
+			return
+		}
+		data, err := state_machine.LoadStateMachine(
+			bytes.NewReader(data[stingray.DataMain]),
+		)
+		if err != nil {
+			pv.err = fmt.Errorf("loading state machine file: %w", err)
+			return
+		}
+		pv.previews.stateMachine.Load(data, fileID)
 	case stingray.Sum("material"):
 		pv.activeType = AutoPreviewMaterial
 		if err := loadFiles(stingray.DataMain); err != nil {
@@ -476,6 +494,8 @@ func (pv *AutoPreview) Draw(name string) bool {
 		pv.previews.xaml.Draw(name)
 	case AutoPreviewFont:
 		pv.previews.font.Draw(name)
+	case AutoPreviewStateMachine:
+		pv.previews.stateMachine.Draw(name)
 	default:
 		panic("unhandled case")
 	}
