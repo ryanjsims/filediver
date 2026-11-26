@@ -497,3 +497,14 @@ func SliderScalarR(label string, vPtr, minPtr, maxPtr reflect.Value, optFormat *
 		format,
 		flags)
 }
+
+// Applies the easing function forwards and backwards over the range 0.0 - 1.0
+// 0.0 -> a
+// 0.5 -> b
+// 1.0 -> a
+func AnimateToFrom[E any](a, b E, x float32, lerp func(a, b E, x float32) E, ease func(float32) float32) E {
+	if x < 0.5 {
+		return lerp(a, b, ease(2*x))
+	}
+	return lerp(b, a, ease(2*(x-0.5)))
+}

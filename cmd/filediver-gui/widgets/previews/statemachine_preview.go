@@ -2,10 +2,12 @@ package previews
 
 import (
 	"fmt"
+	"math"
 	"slices"
 	"strings"
 
 	"github.com/AllenDang/cimgui-go/imgui"
+	"github.com/go-gl/mathgl/mgl32"
 	fnt "github.com/xypwn/filediver/cmd/filediver-gui/fonts"
 	"github.com/xypwn/filediver/cmd/filediver-gui/imutils"
 	"github.com/xypwn/filediver/cmd/filediver-gui/textutils"
@@ -26,7 +28,8 @@ const (
 type layerStateEntry struct {
 	idx             uint32
 	triggeringEvent stingray.ThinHash
-	highlight       float32
+	// How long should the highlight last when visible (in seconds)
+	highlight float32
 }
 
 type StateMachinePreview struct {
@@ -68,6 +71,10 @@ func (pv *StateMachinePreview) updateShownFiles() {
 
 func (pv *StateMachinePreview) drawAnimationsTable(idx int, state state_machine.State) {
 	const tableFlags = imgui.TableFlagsResizable | imgui.TableFlagsBorders | imgui.TableFlagsRowBg
+	imgui.PushStyleColorVec4(imgui.ColTableRowBg, *imgui.StyleColorVec4(imgui.ColWindowBg))
+	altBg := imgui.NewVec4(0.1, 0.1, 0.1, 0.75)
+	imgui.PushStyleColorVec4(imgui.ColTableRowBgAlt, altBg)
+	defer imgui.PopStyleColorV(2)
 	if imgui.BeginTableV(fmt.Sprintf("##Animation subtable %v", idx), 2, tableFlags, imgui.NewVec2(0, 0), 0) {
 		imgui.TableSetupColumnV("Weight", imgui.TableColumnFlagsWidthStretch, 1, 0)
 		imgui.TableSetupColumnV("Animation File", imgui.TableColumnFlagsWidthStretch, 3, 0)
@@ -107,57 +114,82 @@ func (pv *StateMachinePreview) drawAnimationsTable(idx int, state state_machine.
 	}
 }
 
-func (pv *StateMachinePreview) drawLayer(idx int, layer state_machine.Layer) {
-	const tableFlags = imgui.TableFlagsResizable | imgui.TableFlagsBorders | imgui.TableFlagsRowBg
-	if imgui.BeginTableV(fmt.Sprintf("##Layer %v", idx), 2, tableFlags, imgui.NewVec2(0, 0), 0) {
-		state := layer.States[pv.layerStates[idx].idx]
-		imgui.TableSetupColumnV(fmt.Sprintf("State: %v", pv.lookupHash(state.Name)), imgui.TableColumnFlagsWidthStretch, 1, 0)
-		imgui.TableSetupColumnV("", imgui.TableColumnFlagsWidthStretch, 2, 0)
-		imgui.TableSetupScrollFreeze(0, 1)
-		imgui.TableHeadersRow()
+const highlightDuration = float32(2.0) // seconds
 
+func lerp(a, b mgl32.Vec4, x float32) mgl32.Vec4 {
+	return a.Mul(1.0 - x).Add(b.Mul(x))
+}
+
+func fromImgui(a imgui.Vec4) mgl32.Vec4 {
+	return mgl32.Vec4{
+		a.X,
+		a.Y,
+		a.Z,
+		a.W,
+	}
+}
+
+func toImgui(a mgl32.Vec4) imgui.Vec4 {
+	return imgui.NewVec4(a.Elem())
+}
+
+func (pv *StateMachinePreview) drawLayer(idx int, layer state_machine.Layer) {
+	state := layer.States[pv.layerStates[idx].idx]
+	var childFlags = imgui.ChildFlagsFrameStyle | imgui.ChildFlagsAutoResizeY
+
+	colorActive := fromImgui(*imgui.StyleColorVec4(imgui.ColFrameBgActive))
+	colorInactive := fromImgui(*imgui.StyleColorVec4(imgui.ColFrameBg))
+	result := *imgui.StyleColorVec4(imgui.ColFrameBg)
+	if pv.layerStates[idx].highlight > 0.0 {
+		factor := (highlightDuration - pv.layerStates[idx].highlight) / highlightDuration
+		result = toImgui(imutils.AnimateToFrom(
+			colorInactive, colorActive, factor,
+			lerp,
+			func(f float32) float32 {
+				// Ease out quintic
+				return 1.0 - float32(math.Pow(1.0-float64(f), 5.0))
+			},
+		))
+	}
+	imgui.PushStyleColorVec4(imgui.ColFrameBg, result)
+	defer imgui.PopStyleColor()
+	if imgui.BeginChildStrV(fmt.Sprintf("%v %v", state.Name.String(), idx), imgui.NewVec2(0.0, 0.0), childFlags, imgui.WindowFlagsNone) {
+		imgui.SeparatorText(fmt.Sprintf("State: %v", pv.lookupHash(state.Name)))
 		if pv.layerStates[idx].triggeringEvent.Value != 0x0 {
-			imgui.TableNextColumn()
-			imgui.Text("Triggering Event")
-			imgui.TableNextColumn()
+			imgui.Text("Triggered by")
+			imgui.SameLine()
 			imutils.CopyableTextf("%v", pv.lookupThinHash(pv.layerStates[idx].triggeringEvent))
 		}
-
-		imgui.TableNextColumn()
-		imgui.Text("Additive")
-		imgui.TableNextColumn()
 		imgui.BeginDisabled()
-		imgui.Checkbox("", &state.Additive)
+		imgui.Checkbox("Additive", &state.Additive)
+		imgui.SameLine()
+		imgui.Checkbox("Loop", &state.Loop)
 		imgui.EndDisabled()
 
-		imgui.TableNextColumn()
 		imgui.Text("Animations")
-		imgui.TableNextColumn()
-		imgui.PushTextWrapPos()
 		pv.drawAnimationsTable(idx, state)
 
-		imgui.TableNextColumn()
 		imgui.Text("End Event")
-		imgui.TableNextColumn()
+		imgui.SameLine()
 		if state.EmitEndEvent.Value != 0x0 {
 			imutils.CopyableTextf("%v", pv.lookupThinHash(state.EmitEndEvent))
 		} else {
 			imgui.Text("<none>")
 		}
 
-		imgui.TableNextColumn()
 		imgui.Text("Group ID")
-		imgui.TableNextColumn()
+		imgui.SameLine()
 		imutils.CopyableTextf("%v", pv.lookupThinHash(state.GroupID))
 
 		if state.RagdollName.Value != 0x0 {
-			imgui.TableNextColumn()
 			imgui.Text("Ragdoll Name")
-			imgui.TableNextColumn()
+			imgui.SameLine()
 			imutils.CopyableTextf("%v", pv.lookupThinHash(state.RagdollName))
 		}
-
-		imgui.EndTable()
+	}
+	imgui.EndChild()
+	if imgui.IsItemVisible() && pv.layerStates[idx].highlight > 0.0 {
+		pv.layerStates[idx].highlight -= imgui.CurrentIO().DeltaTime()
 	}
 }
 
@@ -231,6 +263,7 @@ func (pv *StateMachinePreview) sendEvent(event stingray.ThinHash) {
 		if link, contains := state.StateTransitions[event]; contains {
 			pv.layerStates[idx].idx = link.Index
 			pv.layerStates[idx].triggeringEvent = event
+			pv.layerStates[idx].highlight = highlightDuration
 		}
 	}
 }
