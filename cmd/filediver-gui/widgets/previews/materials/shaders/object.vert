@@ -9,6 +9,14 @@ layout(location = 5) in vec2 inUV1;
 layout(location = 6) in vec2 inUV2;
 layout(location = 7) in mat4 instModel;
 layout(location = 11) in mat3 normalMat;
+layout(location = 14) in ivec4 indices;
+layout(location = 15) in vec4 weights;
+
+#define MAX_BONES 256
+layout(shared, binding = 11) uniform BoneMatricesBlock {
+    uint animate;
+    mat4 bones[MAX_BONES];
+};
 
 out VertexOutput
 {
@@ -40,7 +48,16 @@ const mat4 stingrayToGL = mat4(
 
 void main() {
     instanceModel = stingrayToGL * instModel;
-    gl_Position = projection * view * model * instModel * vec4(inPosition, 1.0);
+    vec4 position = vec4(0.0);
+    if (animate != 0) {
+        position = bones[indices.x] * vec4(inPosition, 1.0) * weights.x
+            + bones[indices.y] * vec4(inPosition, 1.0) * weights.y
+            + bones[indices.z] * vec4(inPosition, 1.0) * weights.z
+            + bones[indices.w] * vec4(inPosition, 1.0) * weights.w;
+    } else {
+        position = vec4(inPosition, 1.0);
+    }
+    gl_Position = projection * view * model * instModel * position;
     fragPosition = vec3(model * vec4(inPosition, 1.0));
     fragInstPosition = vec3(instanceModel * vec4(inPosition, 1.0));
     objPosition = inPosition;

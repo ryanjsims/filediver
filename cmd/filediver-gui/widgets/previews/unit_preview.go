@@ -26,6 +26,7 @@ import (
 	"github.com/xypwn/filediver/datalibrary/enum"
 	"github.com/xypwn/filediver/dds"
 	"github.com/xypwn/filediver/stingray"
+	"github.com/xypwn/filediver/stingray/bones"
 	"github.com/xypwn/filediver/stingray/entity"
 	"github.com/xypwn/filediver/stingray/level"
 	"github.com/xypwn/filediver/stingray/prefab"
@@ -164,6 +165,8 @@ type UnitPreviewState struct {
 	// to multiply aabb's vertices with aabbMat first!
 	aabb    map[stingray.FileID]map[string][2]mgl32.Vec3
 	aabbMat map[stingray.FileID]map[string]mgl32.Mat4
+
+	boneMap map[stingray.ThinHash]uint8
 
 	// For fitting mesh to screen and debug info
 	meshPositions map[stingray.FileID]map[string][][3]float32
@@ -375,7 +378,7 @@ var vistaMeshes = map[stingray.ThinHash]string{
 	stingray.ThinHash{Value: 0x4101fd70}: "g_slice_nnw",
 }
 
-func (pv *UnitPreviewState) loadMeshes(meshInfos []unit.MeshInfo, meshLayouts []unit.MeshLayout, gpuData []byte) (map[string]unit.Mesh, map[string]bool, error) {
+func (pv *UnitPreviewState) loadMeshes(meshInfos []unit.MeshInfo, meshLayouts []unit.MeshLayout, skeletonMaps []unit.SkeletonMap, bones []unit.Bone, gpuData []byte) (map[string]unit.Mesh, map[string]bool, error) {
 	minLods := make(map[string]int)
 	objects := make(map[string]map[string]int)
 	for idx, info := range meshInfos {
@@ -459,7 +462,7 @@ func (pv *UnitPreviewState) loadMeshes(meshInfos []unit.MeshInfo, meshLayouts []
 	meshes := make(map[string]unit.Mesh)
 	{
 		var err error
-		meshMap, err := unit.LoadMeshes(bytes.NewReader(gpuData), meshInfos, meshLayouts, meshesToLoad)
+		meshMap, err := unit.LoadMeshes(bytes.NewReader(gpuData), meshInfos, meshLayouts, skeletonMaps, bones, pv.boneMap, meshesToLoad)
 		if err != nil {
 			return nil, nil, err
 		}
@@ -615,6 +618,7 @@ func (pv *UnitPreviewState) Clear() {
 		pv.removeRenderedObject(hash)
 	}
 	pv.ml.DeleteAssetGradingLut()
+	pv.boneMap = nil
 }
 
 // Calculate max zoom out distance
@@ -1048,6 +1052,28 @@ func (pv *UnitPreviewState) LoadUnit(fileID stingray.Hash, mainData, gpuData []b
 	return nil
 }
 
+func (pv *UnitPreviewState) loadBones(fileID stingray.Hash) error {
+	bonesMainData, exists, err := pv.getResource(stingray.NewFileID(fileID, stingray.Sum("bones")), stingray.DataMain)
+	if err != nil {
+		return fmt.Errorf("loading %v.bones data: %v", pv.lookupHash(fileID), err)
+	}
+	if !exists {
+		return fmt.Errorf("%v.bones does not exist", pv.lookupHash(fileID))
+	}
+
+	info, err := bones.LoadBones(bytes.NewReader(bonesMainData))
+	if err != nil {
+		return fmt.Errorf("parsing %v.bones data: %v", pv.lookupHash(fileID), err)
+	}
+
+	boneMap := make(map[stingray.ThinHash]uint8)
+	for idx, hash := range info.Hashes {
+		boneMap[hash] = uint8(idx)
+	}
+	pv.boneMap = boneMap
+	return nil
+}
+
 func materialShown(slot string) bool {
 	return !strings.Contains(slot, "gibs") && slot != "transparent"
 }
@@ -1056,6 +1082,10 @@ func (pv *UnitPreviewState) loadUnit(fileID stingray.FileID, mainData, gpuData [
 	info, err := unit.LoadInfo(bytes.NewReader(mainData))
 	if err != nil {
 		return err
+	}
+
+	if pv.boneMap == nil && info.BonesHash.Value != 0x0 {
+		pv.loadBones(info.BonesHash)
 	}
 
 	setModelPos := len(pv.objects) == 0
@@ -1077,7 +1107,7 @@ func (pv *UnitPreviewState) loadUnit(fileID stingray.FileID, mainData, gpuData [
 	var meshes map[string]unit.Mesh
 	var defaultShown map[string]bool
 	if len(info.MeshInfos) > 0 && info.GeometryGroup.Value == 0x0 {
-		meshes, defaultShown, err = pv.loadMeshes(info.MeshInfos, info.MeshLayouts, gpuData)
+		meshes, defaultShown, err = pv.loadMeshes(info.MeshInfos, info.MeshLayouts, info.SkeletonMaps, info.Bones, gpuData)
 		if err != nil {
 			return err
 		}
@@ -1145,7 +1175,7 @@ func (pv *UnitPreviewState) loadUnit(fileID stingray.FileID, mainData, gpuData [
 		} else if err != nil {
 			return fmt.Errorf("failed to load %v.geometry_group gpu data: %v", info.GeometryGroup.String(), err)
 		}
-		meshes, defaultShown, err = pv.loadMeshes(meshInfos, geoGroup.MeshLayouts, geoGPU)
+		meshes, defaultShown, err = pv.loadMeshes(meshInfos, geoGroup.MeshLayouts, info.SkeletonMaps, info.Bones, geoGPU)
 		if err != nil {
 			return err
 		}
@@ -1283,9 +1313,11 @@ func (pv *UnitPreviewState) loadUnit(fileID stingray.FileID, mainData, gpuData [
 			uvsSize := len(mesh.UVCoords[0]) * 2 * 4
 			tangentsSize := len(mesh.Tangents) * 4 * 4
 			bitangentsSize := len(mesh.Bitangents) * 3 * 4
+			boneIndicesSize := len(mesh.BoneIndices[0]) * 4
+			boneWeightsSize := len(mesh.BoneWeights) * 4 * 4
 
 			gl.BindBuffer(gl.ARRAY_BUFFER, object.vbo)
-			gl.BufferData(gl.ARRAY_BUFFER, positionsSize+normalsSize+uvsSize*min(len(mesh.UVCoords), 3)+tangentsSize+bitangentsSize, nil, gl.STATIC_DRAW)
+			gl.BufferData(gl.ARRAY_BUFFER, positionsSize+normalsSize+uvsSize*min(len(mesh.UVCoords), 3)+tangentsSize+bitangentsSize+boneIndicesSize+boneWeightsSize, nil, gl.STATIC_DRAW)
 			offset := 0
 			//
 			gl.BufferSubData(gl.ARRAY_BUFFER, offset, positionsSize, gl.Ptr(mesh.Positions))
@@ -1316,6 +1348,18 @@ func (pv *UnitPreviewState) loadUnit(fileID stingray.FileID, mainData, gpuData [
 				gl.VertexAttribPointerWithOffset(index, 2, gl.FLOAT, false, 2*4, uintptr(offset))
 				gl.EnableVertexAttribArray(index)
 				offset += uvsSize
+			}
+
+			if boneIndicesSize > 0 {
+				gl.BufferSubData(gl.ARRAY_BUFFER, offset, boneIndicesSize, gl.Ptr(mesh.BoneIndices[0]))
+				gl.VertexAttribPointerWithOffset(14, 4, gl.UNSIGNED_BYTE, true, 4, uintptr(offset))
+				gl.EnableVertexAttribArray(14)
+				offset += boneIndicesSize
+
+				gl.BufferSubData(gl.ARRAY_BUFFER, offset, boneWeightsSize, gl.Ptr(mesh.BoneWeights))
+				gl.VertexAttribPointerWithOffset(15, 4, gl.FLOAT, true, 4*4, uintptr(offset))
+				gl.EnableVertexAttribArray(15)
+				offset += boneWeightsSize
 			}
 
 			// Setup instance model/normal matrix attributes
@@ -2012,6 +2056,8 @@ func (pv *UnitPreviewState) loadArmorSet(armorSets []datalib.ArmorSet) {
 			break
 		}
 	}
+	// Load avatar bone map for helldiver animations
+	pv.loadBones(stingray.Sum("content/fac_helldivers/cha_avatar/avatar_helldiver"))
 	setId := armorSets[selectedSet].SetId
 	pv.nodes[stingray.Sum("body_any")] = unitPreviewNode{
 		name:     "Any",

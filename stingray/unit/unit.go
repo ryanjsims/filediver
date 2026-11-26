@@ -595,7 +595,7 @@ type Info struct {
 	MeshLayouts            []MeshLayout
 }
 
-func loadMesh(gpuR io.ReadSeeker, info MeshInfo, layout MeshLayout) (Mesh, error) {
+func loadMesh(gpuR io.ReadSeeker, info MeshInfo, layout MeshLayout, skeletonMap *SkeletonMap, bones []Bone, boneMap map[stingray.ThinHash]uint8) (Mesh, error) {
 	var mesh Mesh
 	var uvCoordLayers uint32 = 1
 	var boneIdxLayers uint32 = 1
@@ -639,7 +639,7 @@ func loadMesh(gpuR io.ReadSeeker, info MeshInfo, layout MeshLayout) (Mesh, error
 		mesh.BoneIndices[layer] = make([][4]uint8, 0, totalVertices)
 	}
 	mesh.BoneWeights = make([][4]float32, 0, totalVertices)
-	for _, group := range info.Groups {
+	for groupIdx, group := range info.Groups {
 		vertexOffsets = append(vertexOffsets, uint32(len(mesh.Positions)))
 		for i := uint32(0); i < group.NumVertices; i++ {
 			offset := layout.VertexOffset + (group.VertexOffset+i)*layout.VertexStride
@@ -778,6 +778,24 @@ func loadMesh(gpuR io.ReadSeeker, info MeshInfo, layout MeshLayout) (Mesh, error
 						}
 					default:
 						return Mesh{}, fmt.Errorf("expected bone index item to have format [4]uint8 or [4]uint32, but got: %v", item.Format.String())
+					}
+					// Remap the bone indices
+					for valIdx, value := range val {
+						if skeletonMap == nil || groupIdx >= len(skeletonMap.RemapList) {
+							break
+						}
+						if int(value) >= len(skeletonMap.RemapList[groupIdx]) {
+							continue
+						}
+						remapIdx := skeletonMap.RemapList[groupIdx][value]
+						val[valIdx] = uint8(skeletonMap.BoneIndices[remapIdx])
+						boneHash := bones[val[valIdx]].NameHash
+						if boneMap != nil {
+							boneval, ok := boneMap[boneHash]
+							if ok {
+								val[valIdx] = boneval
+							}
+						}
 					}
 					mesh.BoneIndices[item.Layer] = append(mesh.BoneIndices[item.Layer], val)
 				default:
@@ -1364,7 +1382,7 @@ func LoadInfo(mainR io.ReadSeeker) (*Info, error) {
 
 // idsToLoad contains the mesh IDs (=indices) of the meshes which should be loaded.
 // To load all meshes, pass a slice with value {0,1,...,info.NumMeshes-1}.
-func LoadMeshes(gpuR io.ReadSeeker, meshInfos []MeshInfo, meshLayouts []MeshLayout, idsToLoad []uint32) (map[uint32]Mesh, error) {
+func LoadMeshes(gpuR io.ReadSeeker, meshInfos []MeshInfo, meshLayouts []MeshLayout, skeletonMaps []SkeletonMap, bones []Bone, boneMap map[stingray.ThinHash]uint8, idsToLoad []uint32) (map[uint32]Mesh, error) {
 	meshes := make(map[uint32]Mesh)
 	for _, id := range idsToLoad {
 		if _, ok := meshes[id]; ok {
@@ -1381,7 +1399,11 @@ func LoadMeshes(gpuR io.ReadSeeker, meshInfos []MeshInfo, meshLayouts []MeshLayo
 		if len(meshInfo.Groups) > 0 && gpuR == nil {
 			return nil, errors.New("mesh group exists, but GPU resource data is nil")
 		}
-		mesh, err := loadMesh(gpuR, meshInfo, layout)
+		var skeletonMap *SkeletonMap
+		if len(skeletonMaps) > 0 && meshInfo.Header.SkeletonMapIdx >= 0 {
+			skeletonMap = &skeletonMaps[meshInfo.Header.SkeletonMapIdx]
+		}
+		mesh, err := loadMesh(gpuR, meshInfo, layout, skeletonMap, bones, boneMap)
 		if err != nil {
 			return nil, err
 		}
