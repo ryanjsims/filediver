@@ -469,6 +469,7 @@ func (a *guiApp) onDraw(state *imgui_wrapper.State) {
 			imgui.InternalDockBuilderDockWindow(fnt.I.DisplaySettings+" Material Settings", bottomRightID)
 			imgui.InternalDockBuilderDockWindow(fnt.I.FolderEye+" Visibility Mask Selection", sideBarID)
 			imgui.InternalDockBuilderDockWindow(fnt.I.Settings+" Tree View", sideBarID)
+			imgui.InternalDockBuilderDockWindow(fnt.I.DirectionsRun+" Select Animation", sideBarID)
 			imgui.InternalDockBuilderFinish(id)
 			a.resetDockLayout = false
 		}

@@ -21,6 +21,7 @@ type DisplayMode int32
 const (
 	AnimationList DisplayMode = iota
 	States
+	AnimationSelector
 )
 
 //go:generate go run golang.org/x/tools/cmd/stringer -type=DisplayMode
@@ -40,6 +41,7 @@ type StateMachinePreview struct {
 	availableEvents []stingray.ThinHash
 	layerStates     []layerStateEntry
 	displayMode     DisplayMode
+	selection       stingray.Hash
 
 	lookupHash     func(stingray.Hash) string
 	lookupThinHash func(stingray.ThinHash) string
@@ -223,20 +225,18 @@ func (pv *StateMachinePreview) drawList() {
 		pv.updateShownFiles()
 	}
 
-	const tableFlags = imgui.TableFlagsResizable | imgui.TableFlagsBorders | imgui.TableFlagsScrollY | imgui.TableFlagsRowBg
-	if imgui.BeginTableV("##Files Preview", 1, tableFlags, imgui.NewVec2(0, 0), 0) {
-		imgui.TableSetupColumnV("Files", imgui.TableColumnFlagsWidthStretch, 1, 0)
-		imgui.TableSetupScrollFreeze(0, 1)
-		imgui.TableHeadersRow()
-
+	imgui.Text("Files")
+	if imgui.BeginListBoxV("##Files Preview", imgui.NewVec2(-1.0, -1.0)) {
 		for _, id := range pv.shownFiles {
-			value := pv.lookupHash(id)
-			imgui.PushIDStr(value)
-			imgui.TableNextColumn()
-			widgets.GamefileLinkTextF(stingray.NewFileID(id, stingray.Sum("animation")), "%v", value)
-			imgui.PopID()
+			isSelected := id == pv.selection
+			if imgui.SelectableBoolV(pv.lookupHash(id), isSelected, imgui.SelectableFlagsNone, imgui.NewVec2(0.0, 0.0)) {
+				pv.selection = id
+			}
+			if isSelected {
+				imgui.SetItemDefaultFocus()
+			}
 		}
-		imgui.EndTable()
+		imgui.EndListBox()
 	}
 }
 
@@ -244,13 +244,20 @@ func (pv *StateMachinePreview) Draw(name string) {
 	imgui.PushIDStr(name)
 	defer imgui.PopID()
 
-	imgui.SeparatorText("Display Mode")
-	imgui.RadioButtonIntPtr("Animation file list", (*int32)(&pv.displayMode), int32(AnimationList))
-	imgui.SameLine()
-	imgui.RadioButtonIntPtr("State simulation", (*int32)(&pv.displayMode), int32(States))
+	if pv.displayMode != AnimationSelector {
+		imgui.SeparatorText("Display Mode")
+		imgui.RadioButtonIntPtr("Animation file list", (*int32)(&pv.displayMode), int32(AnimationList))
+		imgui.SameLine()
+		imgui.RadioButtonIntPtr("State simulation", (*int32)(&pv.displayMode), int32(States))
+	}
+
+	if pv.StateMachine == nil {
+		imgui.Text("<no state_machine>")
+		return
+	}
 
 	switch pv.displayMode {
-	case AnimationList:
+	case AnimationList, AnimationSelector:
 		pv.drawList()
 	case States:
 		pv.drawStates()
@@ -291,10 +298,17 @@ func (pv *StateMachinePreview) Reset() {
 	pv.updateAvailableEvents()
 }
 
-func (pv *StateMachinePreview) Load(data *state_machine.StateMachine, name stingray.FileID) {
-	pv.StateMachine = data
+func (pv *StateMachinePreview) Clear() {
+	pv.StateMachine = nil
 	pv.allFiles = make([]stingray.Hash, 0)
+	pv.shownFiles = make([]stingray.Hash, 0)
 	pv.availableEvents = make([]stingray.ThinHash, 0)
+	pv.selection = stingray.Hash{}
+}
+
+func (pv *StateMachinePreview) Load(data *state_machine.StateMachine, name stingray.FileID) {
+	pv.Clear()
+	pv.StateMachine = data
 	pv.layerStates = make([]layerStateEntry, len(pv.Layers))
 	pv.Reset()
 	for _, layer := range pv.Layers {
@@ -306,4 +320,12 @@ func (pv *StateMachinePreview) Load(data *state_machine.StateMachine, name sting
 	}
 	pv.allFiles = slices.Compact(slices.SortedFunc(slices.Values(pv.allFiles), stingray.Hash.Cmp))
 	pv.updateShownFiles()
+}
+
+func (pv *StateMachinePreview) SetMode(mode DisplayMode) {
+	pv.displayMode = mode
+}
+
+func (pv *StateMachinePreview) GetSelection() stingray.Hash {
+	return pv.selection
 }

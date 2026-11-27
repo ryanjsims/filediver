@@ -166,7 +166,10 @@ type UnitPreviewState struct {
 	aabb    map[stingray.FileID]map[string][2]mgl32.Vec3
 	aabbMat map[stingray.FileID]map[string]mgl32.Mat4
 
-	boneMap map[stingray.ThinHash]uint8
+	boneMap           map[stingray.ThinHash]uint8
+	stateMachine      *StateMachinePreview
+	stateMachineShown bool
+	stateMachineDrawn bool
 
 	// For fitting mesh to screen and debug info
 	meshPositions map[stingray.FileID]map[string][][3]float32
@@ -242,6 +245,9 @@ func NewUnitPreview(
 	pv.getSelectedArchives = ArmorParams.SelectedArchives
 	pv.getOverride = getOverride
 	pv.getResource = getResource
+
+	pv.stateMachine = NewStateMachinePreview(lookupHash, lookupThinHash)
+	pv.stateMachine.SetMode(AnimationSelector)
 
 	boundingBoxMaterial := preview_mats.NewDebugObjectMaterial("bounding box")
 	err = boundingBoxMaterial.Generate()
@@ -619,6 +625,7 @@ func (pv *UnitPreviewState) Clear() {
 	}
 	pv.ml.DeleteAssetGradingLut()
 	pv.boneMap = nil
+	pv.stateMachine.Clear()
 }
 
 // Calculate max zoom out distance
@@ -2981,6 +2988,17 @@ func (pv *UnitPreviewState) Draw(previewId string) {
 		pv.treeViewShown = !pv.treeViewShown
 	}
 
+	imgui.SameLine()
+	label = "Animation Selector"
+	if !pv.stateMachineShown {
+		label = "Show " + label
+	} else {
+		label = "Hide " + label
+	}
+	if imgui.Button(label) {
+		pv.stateMachineShown = !pv.stateMachineShown
+	}
+
 	if pv.animTime != -1 {
 		pv.animTime += 5 * imgui.CurrentIO().DeltaTime()
 	}
@@ -3110,6 +3128,9 @@ func (pv *UnitPreviewState) DrawSettings() {
 	}
 	if pv.treeViewShown {
 		pv.drawTreeViewEditor()
+	}
+	if pv.stateMachineShown {
+		pv.drawAnimationSelector()
 	}
 }
 
@@ -3304,6 +3325,17 @@ Drag to toggle multiple items (right-click to cancel)`)
 		}
 		pv.activeUDimListItem = nextActiveUDimListItem
 		pv.hoveredUDimListItem = nextHoveredUDimListItem
+	}
+	imgui.End()
+}
+
+func (pv *UnitPreviewState) drawAnimationSelector() {
+	if pv.stateMachineDrawn = imgui.BeginV(fnt.I.DirectionsRun+" Select Animation", &pv.stateMachineShown, imgui.WindowFlagsNoFocusOnAppearing); pv.stateMachineDrawn {
+		animation := pv.stateMachine.GetSelection()
+		pv.stateMachine.Draw("animation selector")
+		if pv.stateMachine.GetSelection() != animation {
+			// pv.loadAnimation(pv.stateMachine.GetSelection())
+		}
 	}
 	imgui.End()
 }
