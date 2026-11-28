@@ -43,6 +43,7 @@ const (
 	AutoPreviewXAML
 	AutoPreviewFont
 	AutoPreviewPackage
+	AutoPreviewEntity
 )
 
 type AutoPreview struct {
@@ -55,6 +56,7 @@ type AutoPreview struct {
 		texture  *ImagePreview
 		strings  *StringsPreview
 		_package *PackagePreview
+		entity   *EntityPreview
 		material *MaterialPreview
 		xaml     *XamlPreview
 		font     *FontPreview
@@ -84,7 +86,7 @@ type ExtractorArmorParameters struct {
 	SelectedArchives func() []stingray.Hash
 }
 
-func NewAutoPreview(otoCtx *oto.Context, audioSampleRate int, hashes map[stingray.Hash]string, thinhashes map[stingray.ThinHash]string, getResourceGenerator GetResourceGeneratorFunc, getOverride func(stingray.FileID) stingray.FileID, runner *exec.Runner, planetParams ExtractorPlanetParameters, armorParams ExtractorArmorParameters) (*AutoPreview, error) {
+func NewAutoPreview(otoCtx *oto.Context, audioSampleRate int, hashes map[stingray.Hash]string, thinhashes map[stingray.ThinHash]string, getResourceGenerator GetResourceGeneratorFunc, getOverride func(stingray.FileID) stingray.FileID, runner *exec.Runner, planetParams ExtractorPlanetParameters, armorParams ExtractorArmorParameters, entityVarMapping shading_environment.ShadingEnvironmentEntityToShaderMapping) (*AutoPreview, error) {
 	var err error
 	pv := &AutoPreview{
 		hashes:               hashes,
@@ -121,6 +123,7 @@ func NewAutoPreview(otoCtx *oto.Context, audioSampleRate int, hashes map[stingra
 	pv.previews.texture.Flags = LinearFilteringButton | IgnoreAlphaButton
 	pv.previews.strings = NewStringsPreview()
 	pv.previews._package = NewPackagePreview(pv.lookupHash, getArmorSet)
+	pv.previews.entity = NewEntityPreview(pv.lookupHash, pv.lookupThinHash, entityVarMapping)
 	pv.previews.material = NewMaterialPreview()
 	pv.previews.xaml = NewXamlPreview()
 	pv.previews.font = NewFontPreview()
@@ -373,6 +376,21 @@ func (pv *AutoPreview) LoadFile(ctx context.Context, fileID stingray.FileID, max
 			return
 		}
 		pv.previews._package.Load(data, fileID)
+	case stingray.Sum("entity"):
+		pv.activeType = AutoPreviewEntity
+		if err := loadFiles(stingray.DataMain); err != nil {
+			pv.err = err
+			return
+		}
+		data, err := entity.LoadEntity(
+			bytes.NewReader(data[stingray.DataMain]),
+			entityVarMapping,
+		)
+		if err != nil {
+			pv.err = fmt.Errorf("loading entity file: %w", err)
+			return
+		}
+		pv.previews.entity.Load(data, fileID)
 	case stingray.Sum("material"):
 		pv.activeType = AutoPreviewMaterial
 		if err := loadFiles(stingray.DataMain); err != nil {
@@ -470,6 +488,8 @@ func (pv *AutoPreview) Draw(name string) bool {
 		pv.previews.strings.Draw()
 	case AutoPreviewPackage:
 		pv.previews._package.Draw(name)
+	case AutoPreviewEntity:
+		pv.previews.entity.Draw(name)
 	case AutoPreviewMaterial:
 		pv.previews.material.Draw(name)
 	case AutoPreviewXAML:

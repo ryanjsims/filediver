@@ -21,13 +21,13 @@ type SimpleHeader struct {
 	Magic           string `json:"magic"`
 	UnkInt0         uint32 `json:"unk_int_0"`
 	UnkInt1         uint32 `json:"unk_int_1"`
-	UnkHash         string `json:"unk_hash"`
+	Group           string `json:"group"`
 	SignedIntsCount uint32 `json:"signed_ints_count"`
 	EntityDataCount uint32 `json:"entity_data_count"`
 }
 
 func (s SimpleHeader) ToHeader() (*entity.Header, error) {
-	unkHash, err := stingray.ParseOrSum(s.UnkHash)
+	group, err := stingray.ParseOrSum(s.Group)
 	if err != nil {
 		return nil, err
 	}
@@ -36,7 +36,7 @@ func (s SimpleHeader) ToHeader() (*entity.Header, error) {
 		Magic:           [6]byte{'e', 'n', 't', 'i', 't', 'y'},
 		UnkInt0:         s.UnkInt0,
 		UnkInt1:         s.UnkInt1,
-		UnkHash:         unkHash,
+		Group:           group,
 		SignedIntsCount: s.SignedIntsCount,
 		EntityDataCount: s.EntityDataCount,
 	}, nil
@@ -208,7 +208,7 @@ func (s *SimpleEntity) FromEntity(ctx *extractor.Context, ent *entity.Entity) {
 			Magic:           string(ent.Magic[:]),
 			UnkInt0:         ent.UnkInt0,
 			UnkInt1:         ent.UnkInt1,
-			UnkHash:         ctx.LookupHash(ent.Header.UnkHash),
+			Group:           ctx.LookupHash(ent.Header.Group),
 			SignedIntsCount: ent.SignedIntsCount,
 			EntityDataCount: ent.EntityDataCount,
 		},

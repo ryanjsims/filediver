@@ -430,6 +430,7 @@ func (a *guiApp) onPreDraw(state *imgui_wrapper.State) error {
 				ArmorSets:        a.gameData.ArmorSets,
 				SelectedArchives: func() []stingray.Hash { return slices.SortedFunc(maps.Keys(a.selectedArchives), stingray.Hash.Cmp) },
 			},
+			a.gameData.EntityVarMapping,
 		)
 		if err != nil {
 			return fmt.Errorf("creating preview: %w", err)
