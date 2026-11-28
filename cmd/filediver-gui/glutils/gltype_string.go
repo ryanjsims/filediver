@@ -21,6 +21,9 @@ func _() {
 	_ = x[GL_FLOAT_VEC2-35664]
 	_ = x[GL_FLOAT_VEC3-35665]
 	_ = x[GL_FLOAT_VEC4-35666]
+	_ = x[GL_FLOAT_MAT2-35674]
+	_ = x[GL_FLOAT_MAT3-35675]
+	_ = x[GL_FLOAT_MAT4-35676]
 	_ = x[GL_DOUBLE-5130]
 }
 
@@ -29,12 +32,14 @@ const (
 	_GLType_name_1 = "GL_DOUBLEGL_HALF_FLOATGL_FIXED"
 	_GLType_name_2 = "GL_FLOAT_VEC2GL_FLOAT_VEC3GL_FLOAT_VEC4"
 	_GLType_name_3 = "GL_BOOL"
+	_GLType_name_4 = "GL_FLOAT_MAT2GL_FLOAT_MAT3GL_FLOAT_MAT4"
 )
 
 var (
 	_GLType_index_0 = [...]uint8{0, 7, 23, 31, 48, 54, 69, 77}
 	_GLType_index_1 = [...]uint8{0, 9, 22, 30}
 	_GLType_index_2 = [...]uint8{0, 13, 26, 39}
+	_GLType_index_4 = [...]uint8{0, 13, 26, 39}
 )
 
 func (i GLType) String() string {
@@ -50,6 +55,9 @@ func (i GLType) String() string {
 		return _GLType_name_2[_GLType_index_2[i]:_GLType_index_2[i+1]]
 	case i == 35670:
 		return _GLType_name_3
+	case 35674 <= i && i <= 35676:
+		i -= 35674
+		return _GLType_name_4[_GLType_index_4[i]:_GLType_index_4[i+1]]
 	default:
 		return "GLType(" + strconv.FormatInt(int64(i), 10) + ")"
 	}
