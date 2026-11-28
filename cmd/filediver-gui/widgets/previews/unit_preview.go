@@ -34,6 +34,7 @@ import (
 	"github.com/xypwn/filediver/stingray/level"
 	"github.com/xypwn/filediver/stingray/prefab"
 	"github.com/xypwn/filediver/stingray/speedtree"
+	"github.com/xypwn/filediver/stingray/state_machine"
 	"github.com/xypwn/filediver/stingray/unit"
 	geometrygroup "github.com/xypwn/filediver/stingray/unit/geometry_group"
 	"github.com/xypwn/filediver/stingray/unit/material"
@@ -1085,6 +1086,24 @@ func (pv *UnitPreviewState) loadBones(fileID stingray.Hash) error {
 	return nil
 }
 
+func (pv *UnitPreviewState) loadStateMachine(fileID stingray.Hash) error {
+	stateMachineMainData, exists, err := pv.getResource(stingray.NewFileID(fileID, stingray.Sum("state_machine")), stingray.DataMain)
+	if err != nil {
+		return fmt.Errorf("loading %v.state_machine data: %v", pv.lookupHash(fileID), err)
+	}
+	if !exists {
+		return fmt.Errorf("%v.state_machine does not exist", pv.lookupHash(fileID))
+	}
+
+	info, err := state_machine.LoadStateMachine(bytes.NewReader(stateMachineMainData))
+	if err != nil {
+		return fmt.Errorf("parsing %v.state_machine data: %v", pv.lookupHash(fileID), err)
+	}
+
+	pv.stateMachine.Load(info, stingray.NewFileID(fileID, stingray.Sum("state_machine")))
+	return nil
+}
+
 func materialShown(slot string) bool {
 	return !strings.Contains(slot, "gibs") && slot != "transparent"
 }
@@ -1097,6 +1116,10 @@ func (pv *UnitPreviewState) loadUnit(fileID stingray.FileID, mainData, gpuData [
 
 	if pv.boneMap == nil && info.BonesHash.Value != 0x0 {
 		pv.loadBones(info.BonesHash)
+	}
+
+	if pv.stateMachine.StateMachine == nil && info.StateMachine.Value != 0x0 {
+		pv.loadStateMachine(info.StateMachine)
 	}
 
 	setModelPos := len(pv.objects) == 0
