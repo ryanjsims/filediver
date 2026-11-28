@@ -17,6 +17,9 @@ in VertexOutput
     mat3 dbg_fragTBN;
     mat3 dbg_fragITBN;
     mat4 instanceModel;
+    mat4 boneOut;
+    vec4 weightsOut;
+    vec4 indicesOut;
 } inVertices[];
 
 out vec3 fragPosition;
@@ -31,6 +34,9 @@ out vec3 fragTangentFragmentPosition;
 out mat3 dbg_fragTBN;
 out mat3 dbg_fragITBN;
 out mat4 instanceModel;
+out mat4 boneOut;
+out vec4 weightsOut;
+out vec4 indicesOut;
 
 uniform bool hasVisibilityMasks;
 uniform bool udimShown[64];
@@ -57,6 +63,9 @@ void drawVertex(int idx) {
     dbg_fragTBN = inVertices[idx].dbg_fragTBN;
     dbg_fragITBN = inVertices[idx].dbg_fragITBN;
     instanceModel = inVertices[idx].instanceModel;
+    boneOut = inVertices[idx].boneOut;
+    weightsOut = inVertices[idx].weightsOut;
+    indicesOut = inVertices[idx].indicesOut;
     EmitVertex();
 }
 

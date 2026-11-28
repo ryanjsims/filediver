@@ -84,8 +84,8 @@ func (ml *MaterialManager) updateVistaMaterial(material *VistaMaterial, mat *mat
 		if block.name != "VistaBlock" {
 			continue
 		}
-		block.set("vista_type", &vistaType)
-		block.setDefault("vista_type", &vistaType)
+		block.Set("vista_type", &vistaType)
+		block.SetDefault("vista_type", &vistaType)
 		break
 	}
 }

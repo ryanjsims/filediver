@@ -251,8 +251,8 @@ func (mat *BaseMaterial) InitSettings(settings map[stingray.ThinHash][]float32, 
 			if _, contains := block.uniformOffsets[settingName]; !contains {
 				continue
 			}
-			block.set(settingName, value)
-			block.setDefault(settingName, value)
+			block.Set(settingName, value)
+			block.SetDefault(settingName, value)
 		}
 	}
 }

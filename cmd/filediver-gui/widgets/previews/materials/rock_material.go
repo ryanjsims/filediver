@@ -158,11 +158,11 @@ func (ml *MaterialManager) updateRockMaterial(material *RockMaterial, mat *mater
 		if block.name != "RockBlock" {
 			continue
 		}
-		block.set("rock_type", &rockType)
-		block.setDefault("rock_type", &rockType)
+		block.Set("rock_type", &rockType)
+		block.SetDefault("rock_type", &rockType)
 		for name, value := range snowSettings {
-			block.set(name, value)
-			block.setDefault(name, value)
+			block.Set(name, value)
+			block.SetDefault(name, value)
 		}
 		break
 	}

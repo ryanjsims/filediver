@@ -83,8 +83,8 @@ func (ml *MaterialManager) updateBugsMaterial(material *BugsMaterial, mat *mater
 		if block.name != "BugSettingsBlock" {
 			continue
 		}
-		block.set("fd_transparent", &isTransparent)
-		block.setDefault("fd_transparent", &isTransparent)
+		block.Set("fd_transparent", &isTransparent)
+		block.SetDefault("fd_transparent", &isTransparent)
 	}
 	ml.handleGlobalBlocks(material.BaseMaterial)
 }

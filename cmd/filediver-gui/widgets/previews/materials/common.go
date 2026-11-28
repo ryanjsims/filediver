@@ -19,8 +19,6 @@ import (
 //go:embed shaders/*
 var unitPreviewShaderCode embed.FS
 
-type GetResourceFunc func(id stingray.FileID, typ stingray.DataType) (data []byte, exists bool, err error)
-
 // Basic uniforms all shaders use
 var baseUniforms = []string{
 	"model",
@@ -168,7 +166,7 @@ func (block *UniformBlock) generate(program uint32, name string) {
 }
 
 // Data must be a slice or ptr
-func (block *UniformBlock) set(name string, data any) {
+func (block *UniformBlock) Set(name string, data any) {
 	offset, contains := block.uniformOffsets[name]
 	if !contains || binary.Size(data) > len(block.currentValues[name]) {
 		return
@@ -181,16 +179,16 @@ func (block *UniformBlock) set(name string, data any) {
 	}
 }
 
-func (block *UniformBlock) reset(name string) {
+func (block *UniformBlock) Reset(name string) {
 	data, contains := block.defaultValues[name]
 	if !contains {
 		return
 	}
-	block.set(name, data)
+	block.Set(name, data)
 }
 
 // Data must be a slice
-func (block *UniformBlock) setDefault(name string, data any) {
+func (block *UniformBlock) SetDefault(name string, data any) {
 	_, contains := block.defaultValues[name]
 	if !contains {
 		return
@@ -223,49 +221,49 @@ func (block *UniformBlock) draw(idx int) {
 			block.get(key, &val)
 			result := val != 0
 			if imgui.Checkbox(key, &result) {
-				block.set(key, []uint32{(val + 1) % 2})
+				block.Set(key, []uint32{(val + 1) % 2})
 			}
 		case glutils.GL_BYTE:
 			var val int8
 			block.get(key, &val)
 			oldval := val
 			if imgui.InputScalar(key, imgui.DataTypeS8, uintptr(unsafe.Pointer(&val))) && oldval != val {
-				block.set(key, &val)
+				block.Set(key, &val)
 			}
 		case glutils.GL_UNSIGNED_BYTE:
 			var val uint8
 			block.get(key, &val)
 			oldval := val
 			if imgui.InputScalar(key, imgui.DataTypeU8, uintptr(unsafe.Pointer(&val))) && oldval != val {
-				block.set(key, &val)
+				block.Set(key, &val)
 			}
 		case glutils.GL_SHORT:
 			var val int16
 			block.get(key, &val)
 			oldval := val
 			if imgui.InputScalar(key, imgui.DataTypeS16, uintptr(unsafe.Pointer(&val))) && oldval != val {
-				block.set(key, &val)
+				block.Set(key, &val)
 			}
 		case glutils.GL_UNSIGNED_SHORT:
 			var val uint16
 			block.get(key, &val)
 			oldval := val
 			if imgui.InputScalar(key, imgui.DataTypeU16, uintptr(unsafe.Pointer(&val))) && oldval != val {
-				block.set(key, &val)
+				block.Set(key, &val)
 			}
 		case glutils.GL_INT:
 			var val int32
 			block.get(key, &val)
 			oldval := val
 			if imgui.InputScalar(key, imgui.DataTypeS32, uintptr(unsafe.Pointer(&val))) && oldval != val {
-				block.set(key, &val)
+				block.Set(key, &val)
 			}
 		case glutils.GL_UNSIGNED_INT:
 			var val uint32
 			block.get(key, &val)
 			oldval := val
 			if imgui.InputScalar(key, imgui.DataTypeU32, uintptr(unsafe.Pointer(&val))) && oldval != val {
-				block.set(key, &val)
+				block.Set(key, &val)
 			}
 		case glutils.GL_HALF_FLOAT:
 			var val float16.Float16
@@ -274,21 +272,21 @@ func (block *UniformBlock) draw(idx int) {
 			oldval := floatVal
 			if imgui.InputScalar(key, imgui.DataTypeFloat, uintptr(unsafe.Pointer(&floatVal))) && oldval != floatVal {
 				val = float16.Fromfloat32(floatVal)
-				block.set(key, &val)
+				block.Set(key, &val)
 			}
 		case glutils.GL_FLOAT:
 			var val float32
 			block.get(key, &val)
 			oldval := val
 			if imgui.InputScalar(key, imgui.DataTypeFloat, uintptr(unsafe.Pointer(&val))) && oldval != val {
-				block.set(key, &val)
+				block.Set(key, &val)
 			}
 		case glutils.GL_FLOAT_VEC2, glutils.GL_FLOAT_VEC3, glutils.GL_FLOAT_VEC4:
 			n := block.uniformTypes[key].Count()
 			vals := make([]float32, n)
 			block.get(key, vals)
 			if imgui.InputScalarN(key, imgui.DataTypeFloat, uintptr(unsafe.Pointer(&vals[0])), n) {
-				block.set(key, vals)
+				block.Set(key, vals)
 			}
 		}
 	}

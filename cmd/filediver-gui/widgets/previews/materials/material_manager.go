@@ -14,9 +14,11 @@ import (
 
 	"github.com/AllenDang/cimgui-go/imgui"
 	"github.com/go-gl/gl/v4.3-core/gl"
+	"github.com/go-gl/mathgl/mgl32"
 	fnt "github.com/xypwn/filediver/cmd/filediver-gui/fonts"
 	"github.com/xypwn/filediver/cmd/filediver-gui/glutils"
 	"github.com/xypwn/filediver/cmd/filediver-gui/imutils"
+	"github.com/xypwn/filediver/cmd/filediver-gui/widgets/previews/common"
 	"github.com/xypwn/filediver/dds"
 	extr_entity "github.com/xypwn/filediver/extractor/entity"
 	"github.com/xypwn/filediver/stingray"
@@ -52,6 +54,7 @@ func getTarget(slot string) uint32 {
 var globalBlockNames = []string{
 	"TriplanarBlock",
 	"LightingBlock",
+	"BoneMatricesBlock",
 }
 
 type MaterialManager struct {
@@ -77,7 +80,7 @@ type MaterialManager struct {
 
 	lookupThinHash func(stingray.ThinHash) string
 	lookupHash     func(stingray.Hash) string
-	getResource    GetResourceFunc
+	getResource    common.GetResourceFunc
 	getOverride    func(stingray.FileID) stingray.FileID
 }
 
@@ -151,11 +154,22 @@ func (ml *MaterialManager) handleGlobalBlocks(material *BaseMaterial) {
 			if !ok {
 				ml.globalBlocks[block.name] = material.uniformBlocks[idx]
 				existing = material.uniformBlocks[idx]
-				if existing.name == "LightingBlock" {
-					existing.set("ambient_color", []float32{0.5, 0.5, 0.5})
-					existing.setDefault("ambient_color", []float32{0.5, 0.5, 0.5})
-					existing.set("light_color", []float32{1.25, 1.25, 1.25})
-					existing.setDefault("light_color", []float32{1.25, 1.25, 1.25})
+				switch existing.name {
+				case "LightingBlock":
+					existing.Set("ambient_color", []float32{0.5, 0.5, 0.5})
+					existing.SetDefault("ambient_color", []float32{0.5, 0.5, 0.5})
+					existing.Set("light_color", []float32{1.25, 1.25, 1.25})
+					existing.SetDefault("light_color", []float32{1.25, 1.25, 1.25})
+				case "BoneMatricesBlock":
+					matrices := make([]float32, 0)
+					matrix := mgl32.Ident4()
+					for range 256 {
+						matrices = append(matrices, matrix[:]...)
+					}
+					existing.Set("animate", []uint32{0})
+					existing.SetDefault("animate", []uint32{0})
+					existing.Set("bones[0]", matrices)
+					existing.SetDefault("bones[0]", matrices)
 				}
 			} else if existing.ubo != material.uniformBlocks[idx].ubo {
 				gl.DeleteBuffers(1, &material.uniformBlocks[idx].ubo)
@@ -797,7 +811,7 @@ func (ml *MaterialManager) LoadMaterial(id stingray.FileID, name string, shown b
 	return toReturn
 }
 
-func NewMaterialManager(getResource GetResourceFunc, getOverride func(stingray.FileID) stingray.FileID, lookupThinHash func(stingray.ThinHash) string, lookupHash func(stingray.Hash) string) *MaterialManager {
+func NewMaterialManager(getResource common.GetResourceFunc, getOverride func(stingray.FileID) stingray.FileID, lookupThinHash func(stingray.ThinHash) string, lookupHash func(stingray.Hash) string) *MaterialManager {
 	ml := &MaterialManager{}
 
 	ml.getResource = getResource

@@ -38,7 +38,7 @@ type shader struct {
 	stage  string
 }
 
-var lineNumRegex = regexp.MustCompile("0:(\\d+)")
+var lineNumRegex = regexp.MustCompile(`0:(\d+)`)
 
 func (s shader) validate() error {
 	stdout := bytes.Buffer{}

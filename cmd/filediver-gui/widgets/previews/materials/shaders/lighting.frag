@@ -4,10 +4,14 @@
 in vec3 fragTangentLightPosition; // tangent meaning in tangent space
 in vec3 fragTangentViewPosition;
 in vec3 fragTangentFragmentPosition;
+in mat4 boneOut;
+in vec4 weightsOut;
+in vec4 indicesOut;
 
 uniform sampler2D ibl_brdf_lut;
 
 layout(shared, binding = 10) uniform LightingBlock {
+    uint debugLighting;
     vec3 ambient_color;
     vec3 light_color;
 };
@@ -69,6 +73,20 @@ vec3 gamma(vec3 color, float value) {
 
 // Normal is expected to be in tangent space
 vec4 calculateLighting(vec4 base_color, float roughness, float metallic, float specular, float ambient_occlusion, vec3 normal, float saturation, float contrast) {
+    switch(debugLighting) {
+    case 1:
+        return vec4(boneOut[0].xyz, 1.0);
+    case 2:
+        return vec4(boneOut[1].xyz, 1.0);
+    case 3:
+        return vec4(boneOut[2].xyz, 1.0);
+    case 4:
+        return vec4(boneOut[3].xyz, 1.0);
+    case 5:
+        return vec4(weightsOut.xyz, 1.0);
+    case 6:
+        return vec4(indicesOut.xyz, 1.0);
+    }
     vec3 ambient = ambient_color * ambient_occlusion;
     vec3 lightDirection = normalize(fragTangentLightPosition - fragTangentFragmentPosition);
     vec3 diffuse = max(dot(normal, lightDirection), 0) * light_color;
@@ -104,7 +122,7 @@ vec4 calculateLighting(vec4 base_color, float roughness, float metallic, float s
     // adjust saturation
     base_color.rgb = rgb2hsv(base_color.rgb);
     base_color.g *= saturation;
-    base_color.rgb = hsv2rgb(base_color.rgb); 
+    base_color.rgb = hsv2rgb(base_color.rgb);
     // adjust contrast
     base_color.rgb = (base_color.rgb - 0.5) * contrast + 0.5;
 

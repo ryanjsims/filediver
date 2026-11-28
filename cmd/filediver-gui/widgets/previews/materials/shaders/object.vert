@@ -15,6 +15,7 @@ layout(location = 15) in vec4 weights;
 #define MAX_BONES 256
 layout(shared, binding = 11) uniform BoneMatricesBlock {
     uint animate;
+    int debugBone;
     mat4 bones[MAX_BONES];
 };
 
@@ -32,6 +33,9 @@ out VertexOutput
     mat3 dbg_fragTBN;
     mat3 dbg_fragITBN;
     mat4 instanceModel;
+    mat4 boneOut;
+    vec4 weightsOut;
+    vec4 indicesOut;
 };
 
 uniform mat4 projection;
@@ -48,7 +52,14 @@ const mat4 stingrayToGL = mat4(
 
 void main() {
     instanceModel = stingrayToGL * instModel;
-    vec4 position = vec4(0.0);
+    if (debugBone >= 0) {
+        boneOut = bones[debugBone];
+    } else {
+        boneOut = mat4(0.0);
+    }
+    weightsOut = weights;
+    indicesOut = vec4(indices) / 256.0;
+    vec4 position;
     if (animate != 0) {
         position = bones[indices.x] * vec4(inPosition, 1.0) * weights.x
             + bones[indices.y] * vec4(inPosition, 1.0) * weights.y

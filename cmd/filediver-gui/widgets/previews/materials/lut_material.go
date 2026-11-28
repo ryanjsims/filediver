@@ -83,8 +83,8 @@ func (ml *MaterialManager) updateLutMaterial(material *LutMaterial, mat *materia
 
 	for _, block := range material.uniformBlocks {
 		if _, contains := block.uniformOffsets["seed"]; contains {
-			block.set("seed", &seed)
-			block.setDefault("seed", &seed)
+			block.Set("seed", &seed)
+			block.SetDefault("seed", &seed)
 		}
 		if _, contains := block.uniformOffsets["use_decals"]; contains {
 			val, contains := originalTextures[stingray.Sum("decal_sheet").Thin()]
@@ -93,12 +93,12 @@ func (ml *MaterialManager) updateLutMaterial(material *LutMaterial, mat *materia
 			if contains || hasValue {
 				useDecals = 1
 			}
-			block.set("use_decals", &useDecals)
-			block.setDefault("use_decals", &useDecals)
+			block.Set("use_decals", &useDecals)
+			block.SetDefault("use_decals", &useDecals)
 		}
 		if _, contains := block.uniformOffsets["transparent_lut"]; contains {
-			block.set("transparent_lut", &transparentLut)
-			block.setDefault("transparent_lut", &transparentLut)
+			block.Set("transparent_lut", &transparentLut)
+			block.SetDefault("transparent_lut", &transparentLut)
 		}
 	}
 
