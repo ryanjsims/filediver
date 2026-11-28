@@ -37,6 +37,7 @@ import (
 	"github.com/xypwn/filediver/cmd/filediver-gui/tasks"
 	"github.com/xypwn/filediver/cmd/filediver-gui/widgets"
 	"github.com/xypwn/filediver/cmd/filediver-gui/widgets/previews"
+	preview_common "github.com/xypwn/filediver/cmd/filediver-gui/widgets/previews/common"
 	"github.com/xypwn/filediver/config"
 	"github.com/xypwn/filediver/exec"
 	"github.com/xypwn/filediver/stingray"
@@ -426,7 +427,7 @@ func (a *guiApp) onPreDraw(state *imgui_wrapper.State) error {
 				UseCity:              &a.extractorConfig.Planet.City,
 				UpdateAssetOverrides: a.gameData.UpdateAssetOverrides,
 			},
-			previews.ExtractorArmorParameters{
+			preview_common.ExtractorArmorParameters{
 				ArmorSets:        a.gameData.ArmorSets,
 				SelectedArchives: func() []stingray.Hash { return slices.SortedFunc(maps.Keys(a.selectedArchives), stingray.Hash.Cmp) },
 			},
