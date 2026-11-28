@@ -10,11 +10,12 @@ func _() {
 	var x [1]struct{}
 	_ = x[AnimationList-0]
 	_ = x[States-1]
+	_ = x[AnimationSelector-2]
 }
 
-const _DisplayMode_name = "AnimationListStates"
+const _DisplayMode_name = "AnimationListStatesAnimationSelector"
 
-var _DisplayMode_index = [...]uint8{0, 13, 19}
+var _DisplayMode_index = [...]uint8{0, 13, 19, 36}
 
 func (i DisplayMode) String() string {
 	idx := int(i) - 0

@@ -15,6 +15,7 @@ import (
 	"github.com/AllenDang/cimgui-go/imgui"
 	"github.com/ebitengine/oto/v3"
 	"github.com/xypwn/filediver/cmd/filediver-gui/imutils"
+	"github.com/xypwn/filediver/cmd/filediver-gui/widgets/previews/common"
 	datalib "github.com/xypwn/filediver/datalibrary"
 	"github.com/xypwn/filediver/dds"
 	"github.com/xypwn/filediver/exec"
@@ -67,7 +68,7 @@ type AutoPreview struct {
 	lookupHash           func(h stingray.Hash) string
 	thinhashes           map[stingray.ThinHash]string
 	lookupThinHash       func(h stingray.ThinHash) string
-	getResourceGenerator GetResourceGeneratorFunc
+	getResourceGenerator common.GetResourceGeneratorFunc
 	getOverride          func(stingray.FileID) stingray.FileID
 	loadMs               uint32
 	drawTime             float64
@@ -82,12 +83,7 @@ type ExtractorPlanetParameters struct {
 	UpdateAssetOverrides func(string, bool)
 }
 
-type ExtractorArmorParameters struct {
-	ArmorSets        map[stingray.Hash]datalib.ArmorSet
-	SelectedArchives func() []stingray.Hash
-}
-
-func NewAutoPreview(otoCtx *oto.Context, audioSampleRate int, hashes map[stingray.Hash]string, thinhashes map[stingray.ThinHash]string, getResourceGenerator GetResourceGeneratorFunc, getOverride func(stingray.FileID) stingray.FileID, runner *exec.Runner, planetParams ExtractorPlanetParameters, armorParams ExtractorArmorParameters) (*AutoPreview, error) {
+func NewAutoPreview(otoCtx *oto.Context, audioSampleRate int, hashes map[stingray.Hash]string, thinhashes map[stingray.ThinHash]string, getResourceGenerator common.GetResourceGeneratorFunc, getOverride func(stingray.FileID) stingray.FileID, runner *exec.Runner, planetParams ExtractorPlanetParameters, armorParams common.ExtractorArmorParameters) (*AutoPreview, error) {
 	var err error
 	pv := &AutoPreview{
 		hashes:               hashes,

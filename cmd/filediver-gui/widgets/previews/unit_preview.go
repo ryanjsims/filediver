@@ -21,11 +21,14 @@ import (
 	fnt "github.com/xypwn/filediver/cmd/filediver-gui/fonts"
 	"github.com/xypwn/filediver/cmd/filediver-gui/imutils"
 	"github.com/xypwn/filediver/cmd/filediver-gui/widgets"
+	"github.com/xypwn/filediver/cmd/filediver-gui/widgets/previews/common"
 	preview_mats "github.com/xypwn/filediver/cmd/filediver-gui/widgets/previews/materials"
+	preview_unit "github.com/xypwn/filediver/cmd/filediver-gui/widgets/previews/unit"
 	datalib "github.com/xypwn/filediver/datalibrary"
 	"github.com/xypwn/filediver/datalibrary/enum"
 	"github.com/xypwn/filediver/dds"
 	"github.com/xypwn/filediver/stingray"
+	"github.com/xypwn/filediver/stingray/animation"
 	"github.com/xypwn/filediver/stingray/bones"
 	"github.com/xypwn/filediver/stingray/entity"
 	"github.com/xypwn/filediver/stingray/level"
@@ -126,7 +129,7 @@ type UnitPreviewState struct {
 	fb *widgets.GLViewState
 	ml *preview_mats.MaterialManager
 
-	getResource GetResourceFunc
+	getResource common.GetResourceFunc
 
 	nodes    map[stingray.Hash]unitPreviewNode
 	root     unitPreviewNode
@@ -166,6 +169,7 @@ type UnitPreviewState struct {
 	aabb    map[stingray.FileID]map[string][2]mgl32.Vec3
 	aabbMat map[stingray.FileID]map[string]mgl32.Mat4
 
+	animation         preview_unit.UnitPreviewAnimation
 	boneMap           map[stingray.ThinHash]uint8
 	stateMachine      *StateMachinePreview
 	stateMachineShown bool
@@ -220,7 +224,7 @@ type UnitPreviewState struct {
 func NewUnitPreview(
 	getResource func(id stingray.FileID, typ stingray.DataType) (data []byte, exists bool, err error),
 	getOverride func(stingray.FileID) stingray.FileID,
-	ArmorParams ExtractorArmorParameters,
+	ArmorParams common.ExtractorArmorParameters,
 	lookupHash func(stingray.Hash) string,
 	lookupThinHash func(stingray.ThinHash) string,
 ) (*UnitPreviewState, error) {
@@ -372,16 +376,16 @@ var objectRegex = regexp.MustCompile(`^(g_)?(\w*?)_?(cull|shadow|rubble|rubble_s
 
 // These hashes aren't actually known, so I'm shimming them so previews work
 var vistaMeshes = map[stingray.ThinHash]string{
-	stingray.ThinHash{Value: 0xe199ef6a}: "g_slice_nne",
-	stingray.ThinHash{Value: 0xc3a99d14}: "g_slice_ne",
-	stingray.ThinHash{Value: 0x2673e969}: "g_slice_e",
-	stingray.ThinHash{Value: 0x3eb222e4}: "g_slice_se",
-	stingray.ThinHash{Value: 0x20996a53}: "g_slice_sse",
-	stingray.ThinHash{Value: 0x19885480}: "g_slice_ssw",
-	stingray.ThinHash{Value: 0x386d808c}: "g_slice_sw",
-	stingray.ThinHash{Value: 0xec717099}: "g_slice_w",
-	stingray.ThinHash{Value: 0x0157da28}: "g_slice_nw",
-	stingray.ThinHash{Value: 0x4101fd70}: "g_slice_nnw",
+	{Value: 0xe199ef6a}: "g_slice_nne",
+	{Value: 0xc3a99d14}: "g_slice_ne",
+	{Value: 0x2673e969}: "g_slice_e",
+	{Value: 0x3eb222e4}: "g_slice_se",
+	{Value: 0x20996a53}: "g_slice_sse",
+	{Value: 0x19885480}: "g_slice_ssw",
+	{Value: 0x386d808c}: "g_slice_sw",
+	{Value: 0xec717099}: "g_slice_w",
+	{Value: 0x0157da28}: "g_slice_nw",
+	{Value: 0x4101fd70}: "g_slice_nnw",
 }
 
 func (pv *UnitPreviewState) loadMeshes(meshInfos []unit.MeshInfo, meshLayouts []unit.MeshLayout, skeletonMaps []unit.SkeletonMap, bones []unit.Bone, gpuData []byte) (map[string]unit.Mesh, map[string]bool, error) {
@@ -556,7 +560,7 @@ func (pv *UnitPreviewState) finalizeObjectMaterials() error {
 	return nil
 }
 
-func loadMaterialInfo(getResource GetResourceFunc, materialID stingray.FileID) (*material.Material, error) {
+func loadMaterialInfo(getResource common.GetResourceFunc, materialID stingray.FileID) (*material.Material, error) {
 	if materialID.Name.Value == 0x0 {
 		return nil, fmt.Errorf("nil material")
 	}
@@ -3334,8 +3338,33 @@ func (pv *UnitPreviewState) drawAnimationSelector() {
 		animation := pv.stateMachine.GetSelection()
 		pv.stateMachine.Draw("animation selector")
 		if pv.stateMachine.GetSelection() != animation {
-			// pv.loadAnimation(pv.stateMachine.GetSelection())
+			pv.loadAnimation(pv.stateMachine.GetSelection())
 		}
 	}
 	imgui.End()
+}
+
+func (pv *UnitPreviewState) updateBones(time float32) []mgl32.Mat4 {
+	result := make([]mgl32.Mat4, 0)
+	for bone := range pv.animation.BoneCount {
+		result = append(result, pv.animation.Sample(bone, time))
+	}
+	return result
+}
+
+func (pv *UnitPreviewState) loadAnimation(fileName stingray.Hash) error {
+	animationMainData, exists, err := pv.getResource(stingray.NewFileID(fileName, stingray.Sum("animation")), stingray.DataMain)
+	if err != nil {
+		return fmt.Errorf("loading %v.animation data: %v", pv.lookupHash(fileName), err)
+	}
+	if !exists {
+		return fmt.Errorf("%v.animation does not exist", pv.lookupHash(fileName))
+	}
+
+	info, err := animation.LoadAnimation(bytes.NewReader(animationMainData))
+	if err != nil {
+		return fmt.Errorf("parsing %v.animation data: %v", pv.lookupHash(fileName), err)
+	}
+	pv.animation.Load(info)
+	return nil
 }

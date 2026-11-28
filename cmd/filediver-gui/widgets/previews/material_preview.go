@@ -14,6 +14,7 @@ import (
 	fnt "github.com/xypwn/filediver/cmd/filediver-gui/fonts"
 	"github.com/xypwn/filediver/cmd/filediver-gui/imutils"
 	"github.com/xypwn/filediver/cmd/filediver-gui/widgets"
+	"github.com/xypwn/filediver/cmd/filediver-gui/widgets/previews/common"
 	"github.com/xypwn/filediver/dds"
 	"github.com/xypwn/filediver/stingray"
 	"github.com/xypwn/filediver/stingray/unit/material"
@@ -56,7 +57,7 @@ func (pv *MaterialPreview) Draw(name string) {
 	imgui.EndDisabled()
 }
 
-func (pv *MaterialPreview) LoadMaterial(mat *material.Material, getResource GetResourceFunc, hashes map[stingray.Hash]string, thinhashes map[stingray.ThinHash]string) error {
+func (pv *MaterialPreview) LoadMaterial(mat *material.Material, getResource common.GetResourceFunc, hashes map[stingray.Hash]string, thinhashes map[stingray.ThinHash]string) error {
 	if mat == nil {
 		return fmt.Errorf("attempted to load nil material")
 	}
